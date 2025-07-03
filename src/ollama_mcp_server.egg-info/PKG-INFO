@@ -1,0 +1,231 @@
+Metadata-Version: 2.4
+Name: ollama-mcp-server
+Version: 0.9.0
+Summary: A specialized MCP server for comprehensive Ollama management
+Author-email: Paolo Dalprato <paolo@dalprato.dev>
+License: MIT
+Project-URL: Homepage, https://github.com/paolodalprato/ollama-mcp-server
+Project-URL: Repository, https://github.com/paolodalprato/ollama-mcp-server
+Project-URL: Issues, https://github.com/paolodalprato/ollama-mcp-server/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: ollama>=0.3.0
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: aiofiles>=23.0.0
+Requires-Dist: PyYAML>=6.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+
+# Ollama MCP Server
+
+A cross-platform Model Context Protocol (MCP) server for comprehensive Ollama management with multi-GPU support.
+
+## Overview
+
+This MCP server provides complete Ollama integration capabilities with enterprise-grade cross-platform compatibility. Designed for developers, researchers, and enterprises who need reliable local AI model management via the MCP protocol.
+
+## Features
+
+### Cross-Platform Compatibility
+- **Universal Support**: Windows, Linux, macOS with automatic platform detection
+- **Multi-GPU Detection**: NVIDIA, AMD, Intel, Apple Silicon with vendor-specific optimizations
+- **Configuration Management**: Hierarchical configuration with environment variable overrides
+- **Smart Executable Discovery**: Automatic Ollama installation detection across platforms
+
+### Core Ollama Management
+- **Model Lifecycle**: Download, remove, list, and manage models
+- **Server Control**: Start, stop, restart, and monitor Ollama server with cross-platform process management
+- **Direct Chat**: Communicate directly with local Ollama models
+- **Resource Monitoring**: Real-time system compatibility and hardware analysis
+- **Background Jobs**: Async operations with job tracking and progress monitoring
+
+### Enterprise Features
+- **Configuration System**: YAML/JSON config files with validation and documentation
+- **Comprehensive Logging**: Configurable logging with rotation and multiple outputs
+- **Error Handling**: Structured error responses with troubleshooting guidance
+- **Hardware Analysis**: Detailed GPU metrics and model compatibility assessment
+
+## Installation
+
+### For Development and Contribution
+```bash
+git clone https://github.com/paolodalprato/ollama-mcp-server.git
+cd ollama-mcp-server
+pip install -e .
+```
+
+### For End Users (when available on PyPI)
+```bash
+pip install ollama-mcp-server
+```
+
+## Configuration
+
+### Basic Setup
+Add to your MCP client configuration (e.g., Claude Desktop):
+
+```json
+{
+  "mcpServers": {
+    "ollama-mcp": {
+      "command": "python",
+      "args": ["-m", "ollama_mcp.server"]
+    }
+  }
+}
+```
+
+### Advanced Configuration
+Create a configuration file for customization:
+
+```bash
+# Generate default config
+python -m ollama_mcp.server --create-config
+
+# Edit the generated config file:
+# Windows: %APPDATA%/ollama-mcp/config.yaml
+# Linux/macOS: ~/.config/ollama-mcp/config.yaml
+```
+
+### Environment Variables
+Override settings with environment variables:
+
+```bash
+export OLLAMA_MCP_SERVER_HOST=0.0.0.0
+export OLLAMA_MCP_SERVER_PORT=11435
+export OLLAMA_MCP_HARDWARE_ENABLE_GPU=true
+export OLLAMA_MCP_LOG_LEVEL=DEBUG
+```
+
+## Tools Available
+
+### Model Management
+- `list_local_models` - List installed models with detailed information
+- `local_llm_chat` - Direct chat with local models
+
+### Server Management  
+- `server_status` - Get detailed server status and configuration
+- `start_server` / `stop_server` - Control Ollama server lifecycle
+
+### System Analysis
+- `system_resource_check` - Hardware compatibility and GPU analysis
+
+### Configuration
+- `get_configuration` - View current server configuration
+- `create_default_config` - Generate customizable configuration file
+
+## Usage Examples
+
+### Basic Operations
+- "Show me my installed Ollama models"
+- "Check Ollama server status"
+- "Chat with llama3.1: explain quantum computing"
+
+### System Management
+- "Start Ollama server"
+- "Analyze my system hardware capabilities"
+- "Check if my system can run large language models"
+
+### Configuration
+- "Show current MCP server configuration"
+- "Create a default configuration file for customization"
+
+## Platform-Specific Features
+
+### Windows
+- Automatic detection in Program Files and AppData
+- Background process creation without console windows
+- Windows-specific GPU tools integration
+
+### Linux
+- XDG configuration directory support
+- Advanced GPU detection (NVIDIA, AMD, Intel)
+- Package manager integration paths
+
+### macOS
+- Homebrew installation detection
+- Apple Silicon GPU support with unified memory
+- macOS-specific system integration
+
+## Hardware Support
+
+### GPU Vendors
+- **NVIDIA**: Full support via nvidia-smi (memory, temperature, power, utilization)
+- **AMD**: ROCm support via rocm-smi (memory, usage monitoring)
+- **Intel**: Basic detection via intel-gpu-top and lspci
+- **Apple Silicon**: M1/M2/M3 detection with unified memory handling
+
+### System Requirements
+- Python 3.8+
+- Ollama installed and accessible
+- MCP-compatible client
+- Optional: GPU drivers for hardware acceleration
+
+## Architecture
+
+This server focuses on pure Ollama management with cross-platform compatibility. It provides foundational capabilities for higher-level orchestration systems while maintaining simplicity and reliability.
+
+### Design Principles
+- Cross-platform compatibility from day one
+- Zero configuration for basic use, full customization when needed
+- Comprehensive error handling with user-friendly guidance
+- Modular architecture for easy extension and testing
+
+## Development
+
+### Project Structure
+```
+ollama-mcp-server/
+├── src/ollama_mcp/
+│   ├── server.py          # Main MCP server implementation
+│   ├── config.py          # Configuration management
+│   ├── server_manager.py  # Cross-platform server control
+│   ├── hardware_checker.py # Multi-GPU system analysis
+│   └── ...
+├── tests/                 # Test suite (coming soon)
+├── docs/                  # Documentation
+└── pyproject.toml         # Project configuration
+```
+
+### Contributing
+This project welcomes contributions! Areas where help is especially appreciated:
+
+- Testing on different platforms and hardware configurations
+- Additional GPU vendor support
+- Performance optimizations
+- Documentation improvements
+- Integration examples
+
+See CONTRIBUTING.md for detailed guidelines.
+
+## Version
+
+**Current Version**: 0.9.0 (Beta)
+
+This is a pre-release version. While the architecture is solid and testing has been thorough, we expect there may be edge cases and platform-specific issues to resolve based on community feedback.
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+- Issues: GitHub Issues tracker
+- Discussions: GitHub Discussions
+- Documentation: docs/ directory
