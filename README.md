@@ -6,6 +6,15 @@
 
 A self-contained **Model Context Protocol (MCP) server** for comprehensive Ollama management. Zero external dependencies, enterprise-grade error handling, and complete cross-platform compatibility.
 
+## ⚠️ Current Testing Status
+
+**Currently tested on**: Windows 11 with NVIDIA RTX 4090  
+**Status**: Beta on Windows, Other Platforms Need Testing  
+**Cross-platform code**: Ready for Linux and macOS but requires community testing  
+**GPU support**: NVIDIA fully tested, AMD/Intel/Apple Silicon implemented but needs validation
+
+We welcome testers on different platforms and hardware configurations! Please report your experience via GitHub Issues.
+
 ## 🎯 Key Features
 
 ### 🔧 **Self-Contained Architecture**
@@ -20,8 +29,8 @@ A self-contained **Model Context Protocol (MCP) server** for comprehensive Ollam
 
 ### ⚡ **Complete Ollama Management**
 - **Model Operations**: Download, remove, list models with progress tracking
-- **Server Control**: Start, stop, monitor Ollama server with intelligent process management
-- **Direct Chat**: Local model communication with automatic model selection
+- **Server Control**: Start and monitor Ollama server with intelligent process management
+- **Direct Chat**: Local model communication with fallback model selection
 - **System Analysis**: Hardware compatibility assessment and resource monitoring
 
 ## 🚀 Quick Start
@@ -44,7 +53,7 @@ Add to your MCP client configuration (e.g., Claude Desktop `config.json`):
     "ollama-mcp": {
       "command": "python",
       "args": [
-        "D:\\MCP_SERVER\\INSTALLED\\ollama-mcp-server\\src\\ollama_mcp\\server.py"
+        "X:\\PATH_TO\\ollama-mcp-server\\src\\ollama_mcp\\server.py"
       ],
       "env": {}
     }
@@ -158,29 +167,6 @@ Triggers:
 
 Combines multiple tools for a complete workflow from model selection to technical learning.
 
-## 💡 Usage Examples
-
-### Basic Operations
-```
-"List my installed Ollama models"
-"Chat with llama3.2: explain quantum computing"
-"Check Ollama server health"
-```
-
-### System Management  
-```
-"Start Ollama server"
-"Analyze my system for AI compatibility"
-"Suggest models for code generation"
-```
-
-### Model Management
-```
-"Download qwen2.5-coder:7b"
-"Remove old models to free space"
-"Search for coding-focused models"
-```
-
 ## 🏗️ Architecture
 
 ### **Design Principles**
@@ -192,21 +178,21 @@ Combines multiple tools for a complete workflow from model selection to technica
 ### **Technical Highlights**
 - **Internal Process Management**: Advanced subprocess handling with timeout control
 - **Multi-GPU Detection**: Platform-specific GPU identification without confusing metrics
-- **Intelligent Model Selection**: Automatic fallback and recommendation systems
+- **Intelligent Model Selection**: Fallback to first available model when none specified
 - **Progressive Health Monitoring**: Smart server startup detection with detailed feedback
 
 ## 📋 System Compatibility
 
 ### **Operating Systems**
-- **Windows**: Full support with auto-detection in Program Files and AppData
-- **Linux**: XDG configuration support with package manager integration
-- **macOS**: Homebrew detection with Apple Silicon GPU support
+- **Windows**: Full support with auto-detection in Program Files and AppData ✅ **Tested**
+- **Linux**: XDG configuration support with package manager integration ⚠️ **Needs Testing**
+- **macOS**: Homebrew detection with Apple Silicon GPU support ⚠️ **Needs Testing**
 
 ### **GPU Support**
-- **NVIDIA**: Full detection via nvidia-smi with memory and utilization info
-- **AMD**: ROCm support via vendor-specific tools
-- **Intel**: Basic detection via system tools
-- **Apple Silicon**: M1/M2/M3 detection with unified memory handling
+- **NVIDIA**: Full detection via nvidia-smi with memory and utilization info ✅ **Tested RTX 4090**
+- **AMD**: ROCm support via vendor-specific tools ⚠️ **Needs Testing**
+- **Intel**: Basic detection via system tools ⚠️ **Needs Testing**
+- **Apple Silicon**: M1/M2/M3 detection with unified memory handling ⚠️ **Needs Testing**
 
 ### **Hardware Requirements**
 - **Minimum**: 4GB RAM, 2GB free disk space
@@ -228,8 +214,6 @@ ollama-mcp-server/
 │   ├── model_manager.py       # Model operations
 │   ├── job_manager.py         # Background task management
 │   └── hardware_checker.py    # System analysis
-├── tests/                     # Test suite
-├── docs/                      # Documentation
 └── pyproject.toml            # Project configuration
 ```
 
@@ -254,11 +238,17 @@ ollama-mcp-server/
 
 We welcome contributions! Areas where help is especially appreciated:
 
-- **Platform Testing**: Different OS and hardware configurations
+- **Platform Testing**: Different OS and hardware configurations ⭐ **High Priority**
 - **GPU Vendor Support**: Additional vendor-specific detection
 - **Performance Optimization**: Startup time and resource usage improvements
 - **Documentation**: Usage examples and integration guides
 - **Testing**: Edge cases and error condition validation
+
+### **Immediate Testing Needs**
+- **Linux**: Ubuntu, Fedora, Arch with various GPU configurations
+- **macOS**: Intel and Apple Silicon Macs with different Ollama installations
+- **GPU Vendors**: AMD ROCm, Intel Arc, Apple unified memory
+- **Edge Cases**: Different Python versions, various Ollama installation methods
 
 ### **Development Setup**
 ```bash
@@ -278,26 +268,6 @@ isort src/
 # Type checking
 mypy src/
 ```
-
-### **Testing Guidelines**
-- Write tests for new features and bug fixes
-- Ensure cross-platform compatibility
-- Include both unit tests and integration tests
-- Test error conditions and edge cases
-
-## 📚 Documentation
-
-### **User Documentation**
-- [Installation Guide](docs/installation.md)
-- [Configuration Reference](docs/configuration.md)
-- [Tool Reference](docs/tools.md)
-- [Troubleshooting](docs/troubleshooting.md)
-
-### **Developer Documentation**
-- [Architecture Overview](docs/architecture.md)
-- [API Reference](docs/api.md)
-- [Contributing Guidelines](CONTRIBUTING.md)
-- [Release Process](docs/release.md)
 
 ## 🐛 Troubleshooting
 
@@ -326,14 +296,17 @@ ollama serve
 - **Windows**: Run as Administrator if needed
 - **Linux/macOS**: Check user permissions for service management
 
-### **Getting Help**
-- **Issues**: [GitHub Issues](https://github.com/paolodalprato/ollama-mcp-server/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/paolodalprato/ollama-mcp-server/discussions)
-- **Documentation**: Check the `docs/` directory
+### **Platform-Specific Issues**
+If you encounter issues on Linux or macOS, please report them via GitHub Issues with:
+- Operating system and version
+- Python version
+- Ollama version and installation method
+- GPU hardware (if applicable)
+- Complete error output
 
 ## 📊 Performance
 
-### **Typical Response Times**
+### **Typical Response Times** *(Windows RTX 4090)*
 - **Health Check**: <500ms
 - **Model List**: <1 second
 - **Server Start**: 1-15 seconds (hardware dependent)
@@ -346,39 +319,17 @@ ollama serve
 
 ## 🔐 Security
 
-- **Local Processing**: All AI operations performed locally
-- **No Data Transmission**: No external API calls or data sharing
-- **Process Isolation**: Secure subprocess management
-- **Configuration Security**: Safe handling of configuration files
-
-## 📈 Roadmap
-
-### **Version 1.0 Goals**
-- [ ] Comprehensive test suite with CI/CD
-- [ ] Performance optimizations and benchmarking
-- [ ] Additional GPU vendor support (AMD ROCm, Intel Arc)
-- [ ] Configuration management UI
-- [ ] Docker containerization support
-
-### **Future Enhancements**
-- [ ] Model performance analytics
-- [ ] Distributed model management
-- [ ] Advanced scheduling and queuing
-- [ ] Integration with popular AI frameworks
-- [ ] Web dashboard interface
+- **Data Flow**: User → MCP Client (Claude) → ollama-mcp-server → Local Ollama → back through chain
 
 ## 👨‍💻 About This Project
 
-This is my first MCP server, born from practical necessity and real-world usage. As someone who works daily with AI tools and helps companies integrate generative AI into their workflows, I found myself constantly switching between different interfaces to manage local Ollama models.
+This is my first MCP server, created by adapting a personal tool I had developed for my own Ollama management needs.
 
 ### **The Problem I Faced**
-- Switching between command line and GUI tools for model management
-- Inconsistent model information across different interfaces  
-- Complex server startup procedures when Ollama wasn't running
-- Difficulty recommending appropriate models to clients and students
+I started using Claude to interact with Ollama because it allows me to use natural language instead of command-line interfaces. Claude also provides capabilities that Ollama alone doesn't have, particularly intelligent model suggestions based on both my system capabilities and specific needs.
 
 ### **My Solution**
-I built this MCP server to streamline my own workflow, and then refined it into a production-ready tool that others might find useful. The design reflects real usage patterns:
+I built this MCP server to streamline my own workflow, and then refined it into a stable tool that others might find useful. The design reflects real usage patterns:
 
 - **Self-contained**: No external dependencies that can break
 - **Intelligent error handling**: Clear guidance when things go wrong
@@ -386,9 +337,9 @@ I built this MCP server to streamline my own workflow, and then refined it into 
 - **Practical tools**: Features I actually use in daily work
 
 ### **Design Philosophy**
-This isn't just another technical project - it's a tool built by someone who uses it daily. Every feature addresses a real problem I encountered while working with local AI models, training clients, or helping companies evaluate AI integration options.
+I initially developed this for my personal use to manage Ollama models more efficiently. When the MCP protocol became available, I transformed my personal tool into an MCP server to share it with others who might find it useful.
 
-The extensive documentation and error handling reflect my experience supporting diverse users with varying technical backgrounds, from developers to business users taking their first steps with local AI.
+**Development Approach**: This project was developed using "vibe coding" with Claude - an iterative, conversational development process where AI assistance helped refine both the technical implementation and user experience. It's a practical example of AI-assisted development creating tools for AI management.
 
 ## 📄 License
 
@@ -406,11 +357,10 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Bug Reports**: [GitHub Issues](https://github.com/paolodalprato/ollama-mcp-server/issues)
 - **Feature Requests**: [GitHub Issues](https://github.com/paolodalprato/ollama-mcp-server/issues)
 - **Community Discussion**: [GitHub Discussions](https://github.com/paolodalprato/ollama-mcp-server/discussions)
-- **Documentation**: [docs/](docs/) directory
 
 ---
 
-**Status**: Production Ready - v0.9 FINAL  
+**Status**: Beta on Windows, Other Platforms Need Testing  
+**Testing**: Windows 11 + RTX 4090 validated, Linux/macOS require community validation  
 **License**: MIT  
-**Platform**: Cross-Platform (Windows/Linux/macOS)  
 **Dependencies**: Zero external MCP servers required
