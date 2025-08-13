@@ -1,14 +1,13 @@
 """
-Ollama Client - MCP Server v1.1 Simplified
-Resilient client for Ollama communication with lazy initialization
-
-Based on v0.9 resilience patterns but dramatically simplified
+Ollama Client - MCP Server v2.0 Refactored
+Fully asynchronous, resilient client for Ollama communication.
 """
 
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+import ollama
 
 logger = logging.getLogger(__name__)
 
@@ -22,154 +21,122 @@ class ModelInfo:
     @property
     def size_human(self) -> str:
         """Human readable size"""
+        s = self.size
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if self.size < 1024.0:
-                return f"{self.size:.1f} {unit}"
-            self.size /= 1024.0
-        return f"{self.size:.1f} PB"
-
+            if s < 1024.0:
+                return f"{s:.1f} {unit}"
+            s /= 1024.0
+        return f"{s:.1f} PB"
 
 class OllamaClient:
     """
-    Simplified resilient Ollama client
+    Fully asynchronous and resilient Ollama client.
     
     Key features:
-    - Lazy initialization (starts even if Ollama offline)
-    - Non-blocking health checks
-    - Graceful error handling
-    - Minimal dependencies
+    - Uses native ollama.AsyncClient for better performance.
+    - Lazy initialization (starts even if Ollama is offline).
+    - Graceful error handling.
     """
     
     def __init__(self, host: str = "http://localhost:11434", timeout: int = 30):
         """Initialize client without connecting"""
         self.host = host
         self.timeout = timeout
-        self.client = None
+        self.client: Optional[ollama.AsyncClient] = None
         self._initialized = False
-        self._init_error = None
+        self._init_error: Optional[str] = None
         logger.debug(f"OllamaClient created for {host}")
     
     def _ensure_client(self) -> bool:
-        """Ensure client is initialized, return success status"""
+        """Ensure the async client is initialized, return success status"""
         if self._initialized:
             return self.client is not None
         
         try:
-            import ollama
-            self.client = ollama.Client(host=self.host)
+            # The ollama package is a required dependency, but we check for robustness.
+            self.client = ollama.AsyncClient(host=self.host, timeout=self.timeout)
             self._initialized = True
-            logger.debug("Ollama client initialized successfully")
+            logger.debug("Ollama async client initialized successfully")
             return True
-        except ImportError:
-            self._init_error = "ollama package not installed. Run: pip install ollama"
-            self._initialized = True
-            return False
         except Exception as e:
-            self._init_error = f"Failed to initialize: {e}"
+            self._init_error = f"Failed to initialize ollama.AsyncClient: {e}"
             self._initialized = True
+            self.client = None
             return False
     
     async def health_check(self) -> Dict[str, Any]:
-        """Check Ollama server health without blocking"""
-        if not self._ensure_client():
-            return {
-                "healthy": False,
-                "error": self._init_error,
-                "host": self.host
-            }
+        """Check Ollama server health asynchronously."""
+        if not self._ensure_client() or not self.client:
+            return {"healthy": False, "error": self._init_error, "host": self.host}
         
         try:
-            # Try to list models as health check
-            loop = asyncio.get_event_loop()
-            models = await asyncio.wait_for(
-                loop.run_in_executor(None, self._sync_list),
-                timeout=5.0
-            )
-            
+            # The 'ps' command is a lightweight way to check for a response.
+            await asyncio.wait_for(self.client.ps(), timeout=5.0)
+            # A full list is not needed for health check, but can provide model count
+            models = await self.list_models()
             return {
                 "healthy": True,
-                "models_count": len(models),
+                "models_count": models.get("count", 0),
                 "host": self.host,
                 "message": "Ollama server responsive"
             }
         except asyncio.TimeoutError:
-            return {
-                "healthy": False,
-                "error": "Ollama server timeout",
-                "host": self.host
-            }
+            return {"healthy": False, "error": "Ollama server timeout", "host": self.host}
         except Exception as e:
-            return {
-                "healthy": False,
-                "error": str(e),
-                "host": self.host
-            }
+            return {"healthy": False, "error": str(e), "host": self.host}
     
     async def list_models(self) -> Dict[str, Any]:
-        """List available models with error handling"""
-        if not self._ensure_client():
-            return {
-                "success": False,
-                "error": self._init_error,
-                "models": []
-            }
+        """List available models asynchronously with error handling."""
+        if not self._ensure_client() or not self.client:
+            return {"success": False, "error": self._init_error, "models": []}
         
         try:
-            loop = asyncio.get_event_loop()
-            raw_models = await asyncio.wait_for(
-                loop.run_in_executor(None, self._sync_list),
-                timeout=10.0
-            )
+            response = await self.client.list()
+            raw_models = response.get('models', [])
             
-            models = []
-            for model_data in raw_models:
-                try:
-                    models.append(ModelInfo(
-                        name=getattr(model_data, 'model', model_data.get('name', 'unknown')),
-                        size=getattr(model_data, 'size', model_data.get('size', 0)),
-                        modified=str(getattr(model_data, 'modified_at', model_data.get('modified', 'unknown')))
-                    ))
-                except Exception as e:
-                    logger.warning(f"Model parsing error: {e}")
-                    continue
+            models = [
+                ModelInfo(
+                    name=model.get('name', 'unknown'),
+                    size=model.get('size', 0),
+                    modified=model.get('modified_at', 'unknown')
+                )
+                for model in raw_models
+            ]
             
-            return {
-                "success": True,
-                "models": models,
-                "count": len(models)
-            }
+            return {"success": True, "models": models, "count": len(models)}
             
         except asyncio.TimeoutError:
-            return {
-                "success": False,
-                "error": "Timeout listing models",
-                "models": []
-            }
+            return {"success": False, "error": "Timeout listing models", "models": []}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "models": []
-            }
+            return {"success": False, "error": str(e), "models": []}
+
+    async def show(self, model_name: str) -> Dict[str, Any]:
+        """Get details about a model asynchronously."""
+        if not self._ensure_client() or not self.client:
+            return {"success": False, "error": self._init_error}
+
+        try:
+            response = await self.client.show(model_name)
+            response["success"] = True
+            response["name"] = model_name # The show command doesn't return the name, so we add it.
+            return response
+        except ollama.ResponseError as e:
+            if e.status_code == 404:
+                return {"success": False, "error": f"Model '{model_name}' not found."}
+            return {"success": False, "error": str(e)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
     
     async def chat(self, model: str, prompt: str, temperature: float = 0.7) -> Dict[str, Any]:
-        """Generate response using Ollama model"""
-        if not self._ensure_client():
-            return {
-                "success": False,
-                "error": self._init_error,
-                "response": ""
-            }
+        """Generate response using Ollama model asynchronously."""
+        if not self._ensure_client() or not self.client:
+            return {"success": False, "error": self._init_error, "response": ""}
         
         try:
             messages = [{"role": "user", "content": prompt}]
             options = {"temperature": temperature}
             
-            loop = asyncio.get_event_loop()
-            response = await asyncio.wait_for(
-                loop.run_in_executor(None, self._sync_chat, model, messages, options),
-                timeout=120.0
-            )
+            response = await self.client.chat(model=model, messages=messages, options=options)
             
             content = response.get('message', {}).get('content', '')
             
@@ -184,108 +151,59 @@ class OllamaClient:
             }
             
         except asyncio.TimeoutError:
-            return {
-                "success": False,
-                "error": "Chat timeout - model may be loading",
-                "response": ""
-            }
+            return {"success": False, "error": "Chat timeout - model may be loading", "response": ""}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "response": ""
-            }
+            return {"success": False, "error": str(e), "response": ""}
     
-    async def pull_model(self, model_name: str) -> Dict[str, Any]:
-        """Download/pull a model from Ollama Hub"""
-        if not self._ensure_client():
-            return {
-                "success": False,
-                "error": self._init_error
-            }
+    async def pull_model(self, model_name: str, stream: bool = False) -> Dict[str, Any]:
+        """Download/pull a model from Ollama Hub asynchronously."""
+        if not self._ensure_client() or not self.client:
+            return {"success": False, "error": self._init_error}
         
         try:
-            loop = asyncio.get_event_loop()
-            result = await asyncio.wait_for(
-                loop.run_in_executor(None, self._sync_pull, model_name),
-                timeout=1800.0  # 30 minutes for download
-            )
+            # The async pull method can stream statuses, but for a simple pull we set stream=False.
+            result = await self.client.pull(model_name, stream=stream)
             
             return {
                 "success": True,
                 "message": f"Model {model_name} downloaded successfully",
-                "model_name": model_name
+                "model_name": model_name,
+                "status": result.get("status")
             }
             
         except asyncio.TimeoutError:
-            return {
-                "success": False,
-                "error": "Download timeout - model may be very large",
-                "model_name": model_name
-            }
+            return {"success": False, "error": "Download timeout - model may be very large", "model_name": model_name}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "model_name": model_name
-            }
-    
+            return {"success": False, "error": str(e), "model_name": model_name}
+
+    async def pull_model_stream(self, model_name: str):
+        """Yields progress for a model download."""
+        if not self._ensure_client() or not self.client:
+            yield {"success": False, "error": self._init_error}
+            return
+
+        try:
+            async for progress in self.client.pull(model_name, stream=True):
+                yield {"success": True, "progress": progress}
+        except Exception as e:
+            yield {"success": False, "error": str(e)}
+
     async def remove_model(self, model_name: str) -> Dict[str, Any]:
-        """Remove a model from local storage"""
-        if not self._ensure_client():
-            return {
-                "success": False,
-                "error": self._init_error
-            }
+        """Remove a model from local storage asynchronously."""
+        if not self._ensure_client() or not self.client:
+            return {"success": False, "error": self._init_error}
         
         try:
-            loop = asyncio.get_event_loop()
-            await asyncio.wait_for(
-                loop.run_in_executor(None, self._sync_remove, model_name),
-                timeout=30.0
-            )
+            await self.client.delete(model_name)
             
-            return {
-                "success": True,
-                "message": f"Model {model_name} removed successfully",
-                "model_name": model_name
-            }
+            return {"success": True, "message": f"Model {model_name} removed successfully", "model_name": model_name}
             
         except asyncio.TimeoutError:
-            return {
-                "success": False,
-                "error": "Remove timeout",
-                "model_name": model_name
-            }
+            return {"success": False, "error": "Remove timeout", "model_name": model_name}
+        except ollama.ResponseError as e:
+             # Handle case where model does not exist
+            if e.status_code == 404:
+                return {"success": False, "error": f"Model '{model_name}' not found.", "model_name": model_name}
+            return {"success": False, "error": str(e), "model_name": model_name}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "model_name": model_name
-            }
-    
-    # Sync methods for executor
-    def _sync_list(self) -> List[Any]:
-        """Sync list models"""
-        if not self.client:
-            raise Exception("Client not initialized")
-        response = self.client.list()
-        return getattr(response, 'models', response.get('models', []))
-    
-    def _sync_chat(self, model: str, messages: List[Dict], options: Dict) -> Dict:
-        """Sync chat"""
-        if not self.client:
-            raise Exception("Client not initialized")
-        return self.client.chat(model=model, messages=messages, options=options)
-    
-    def _sync_pull(self, model_name: str) -> Dict:
-        """Sync pull model"""
-        if not self.client:
-            raise Exception("Client not initialized")
-        return self.client.pull(model_name)
-    
-    def _sync_remove(self, model_name: str) -> Dict:
-        """Sync remove model"""
-        if not self.client:
-            raise Exception("Client not initialized")
-        return self.client.delete(model_name)
+            return {"success": False, "error": str(e), "model_name": model_name}
