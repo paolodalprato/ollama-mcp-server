@@ -4,7 +4,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 
-A self-contained **Model Context Protocol (MCP) server** for comprehensive Ollama management. Zero external dependencies, enterprise-grade error handling, and complete cross-platform compatibility.
+A self-contained **Model Context Protocol (MCP) server** for local Ollama management. Features include listing local models, chatting, starting/stopping the server, and a 'local model advisor' to suggest the best local model for a given task. The server is designed to be a robust, dependency-free, and cross-platform tool for managing a local Ollama instance.
 
 ## ⚠️ Current Testing Status
 
@@ -27,11 +27,11 @@ We welcome testers on different platforms and hardware configurations! Please re
 - **Multi-GPU Support**: NVIDIA, AMD, Intel detection with vendor-specific optimizations
 - **Smart Installation Discovery**: Automatic Ollama detection across platforms
 
-### ⚡ **Complete Ollama Management**
-- **Model Operations**: Download, remove, list models with progress tracking
-- **Server Control**: Start and monitor Ollama server with intelligent process management
-- **Direct Chat**: Local model communication with fallback model selection
-- **System Analysis**: Hardware compatibility assessment and resource monitoring
+### ⚡ **Complete Local Ollama Management**
+- **Model Operations**: List, suggest, and remove local models.
+- **Server Control**: Start and monitor the Ollama server with intelligent process management.
+- **Direct Chat**: Communicate with any locally installed model.
+- **System Analysis**: Assess hardware compatibility and monitor resources.
 
 ## 🚀 Quick Start
 
@@ -72,21 +72,19 @@ Add to your MCP client configuration (e.g., Claude Desktop `config.json`):
 ## 🛠️ Available Tools
 
 ### **Model Management**
-- `list_local_models` - List installed models with details
-- `local_llm_chat` - Chat directly with local models
-- `download_model` - Download models with progress tracking
-- `remove_model` - Safely remove models from storage
+- `list_local_models` - List all locally installed models with their details.
+- `local_llm_chat` - Chat directly with any locally installed model.
+- `remove_model` - Safely remove a model from local storage.
+- `suggest_models` - Recommends the best **locally installed** model for a specific task (e.g., "suggest a model for coding").
 
-### **Server Operations**
-- `start_ollama_server` - Start Ollama server (self-contained implementation)
-- `ollama_health_check` - Comprehensive server health diagnostics
-- `system_resource_check` - Hardware compatibility analysis
+### **Server and System Operations**
+- `start_ollama_server` - Starts the Ollama server if it's not already running.
+- `ollama_health_check` - Performs a comprehensive health check of the Ollama server.
+- `system_resource_check` - Analyzes system hardware and resource availability.
 
-### **Advanced Features**
-- `suggest_models` - AI-powered model recommendations based on your needs
-- `search_available_models` - Search Ollama Hub by category
-- `check_download_progress` - Monitor download progress with visual indicators
-- `select_chat_model` - Interactive model selection interface
+### **Diagnostics**
+- `test_model_responsiveness` - Checks the responsiveness of a specific local model by sending a test prompt, helping to diagnose performance issues.
+- `select_chat_model` - Presents a list of available local models to choose from before starting a chat.
 
 ## 💬 How to Interact with Ollama-MCP
 
@@ -114,14 +112,12 @@ You: "Check if Ollama is running"
 
 #### **Model Management**
 - *"What models do I have installed?"* → `list_local_models`
-- *"Download qwen2.5-coder for coding tasks"* → `download_model`
+- *"I need a model for creative writing, which of my models is best?"* → `suggest_models`
 - *"Remove the old mistral model to save space"* → `remove_model`
-- *"Show me coding-focused models I can download"* → `search_available_models`
 
 #### **System Operations**
 - *"Start Ollama server"* → `start_ollama_server`
 - *"Is my system capable of running large AI models?"* → `system_resource_check`
-- *"Recommend a model for creative writing"* → `suggest_models`
 
 #### **AI Chat**
 - *"Chat with llama3.2: write a Python function to sort a list"* → `local_llm_chat`
@@ -138,21 +134,20 @@ You: "Check if Ollama is running"
 ## 🎯 Real-World Use Cases
 
 ### **Daily Development Workflow**
-*"I need to set up local AI for coding. Check my system, recommend a good coding model, download it, and test it with a simple Python question."*
+*"I need to work on a coding project. Which of my local models is best for coding? Let's check its performance and then ask it a question."*
 
-This would automatically trigger:
-1. `system_resource_check` - Verify hardware capability
-2. `suggest_models` - Recommend coding-focused models
-3. `download_model` - Download the recommended model
-4. `local_llm_chat` - Test with your Python question
+This could trigger:
+1. `suggest_models` - Recommends the best local model for "coding".
+2. `test_model_responsiveness` - Checks if the recommended model is responsive.
+3. `local_llm_chat` - Starts a chat with the model.
 
 ### **Model Management Session**
-*"Show me what models I have, see what new coding models are available, and clean up any old models I don't need."*
+*"Show me what models I have and recommend one for writing a story. Then let's clean up any old models I don't need."*
 
 Triggers:
 1. `list_local_models` - Current inventory
-2. `search_available_models` - Browse new options
-3. `remove_model` - Cleanup unwanted models
+2. `suggest_models` - Recommends a local model for "writing a story".
+3. `remove_model` - Cleanup unwanted models.
 
 ### **Troubleshooting Session**
 *"Ollama isn't working. Check what's wrong, try to fix it, and test with a simple chat."*
@@ -161,11 +156,6 @@ Triggers:
 1. `ollama_health_check` - Diagnose issues
 2. `start_ollama_server` - Attempt to start server
 3. `local_llm_chat` - Verify working with test message
-
-### **Research and Development**
-*"I'm working on a machine learning project. Suggest models good for code analysis, download the best one, and help me understand transformer architectures."*
-
-Combines multiple tools for a complete workflow from model selection to technical learning.
 
 ## 🏗️ Architecture
 
@@ -208,11 +198,10 @@ ollama-mcp-server/
 │   ├── server.py              # Main MCP server implementation
 │   ├── client.py              # Ollama client interface
 │   ├── tools/
-│   │   ├── base_tools.py      # Essential 4 tools
-│   │   └── advanced_tools.py  # Extended 7 tools
+│   │   ├── base_tools.py      # Essential tools
+│   │   └── advanced_tools.py  # Extended tools
 │   ├── config.py              # Configuration management
 │   ├── model_manager.py       # Model operations
-│   ├── job_manager.py         # Background task management
 │   └── hardware_checker.py    # System analysis
 └── pyproject.toml            # Project configuration
 ```
@@ -357,6 +346,13 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Bug Reports**: [GitHub Issues](https://github.com/paolodalprato/ollama-mcp-server/issues)
 - **Feature Requests**: [GitHub Issues](https://github.com/paolodalprato/ollama-mcp-server/issues)
 - **Community Discussion**: [GitHub Discussions](https://github.com/paolodalprato/ollama-mcp-server/discussions)
+
+---
+
+## Changelog
+
+*   **August 2025:** Project refactoring and enhancement by Jules. Overhauled the architecture for modularity, implemented a fully asynchronous client, added a test suite, and refined the tool logic based on a "local-first" philosophy.
+*   **July 2025:** Initial version created by Paolo Dalprato.
 
 ---
 

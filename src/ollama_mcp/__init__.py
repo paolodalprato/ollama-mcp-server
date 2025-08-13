@@ -11,7 +11,7 @@ License: MIT
 
 __version__ = "1.0.0"
 __author__ = "Paolo Dalprato"
-__email__ = "paolo@dalprato.dev"
+__email__ = "paolo@paolodalprato.com"
 __license__ = "MIT"
 
 from .client import OllamaClient

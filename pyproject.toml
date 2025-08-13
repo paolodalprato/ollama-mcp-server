@@ -7,7 +7,7 @@ name = "ollama-mcp-server"
 version = "0.9.0"
 description = "Self-contained MCP server for comprehensive Ollama management with zero external dependencies"
 authors = [
-    {name = "Paolo Dalprato", email = "paolo@dalprato.dev"}
+    {name = "Paolo Dalprato", email = "paolo@paolodalprato.com"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
