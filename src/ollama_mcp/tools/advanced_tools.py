@@ -20,7 +20,6 @@ from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
 
 from ollama_mcp.client import OllamaClient
-from ollama_mcp.job_manager import get_job_manager
 from ollama_mcp.model_manager import ModelManager
 
 
@@ -44,34 +43,6 @@ def get_advanced_tools() -> List[Tool]:
                     }
                 },
                 "required": ["user_needs"]
-            }
-        ),
-        Tool(
-            name="download_model",
-            description="Start asynchronous download of a model from Ollama Hub",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "model_name": {
-                        "type": "string",
-                        "description": "Name of the model to download (e.g., 'llama3.2', 'qwen2.5:7b')"
-                    }
-                },
-                "required": ["model_name"]
-            }
-        ),
-        Tool(
-            name="check_download_progress",
-            description="Check progress of a running model download",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "job_id": {
-                        "type": "string",
-                        "description": "Job ID returned from download_model command"
-                    }
-                },
-                "required": ["job_id"]
             }
         ),
         Tool(
@@ -138,10 +109,6 @@ async def handle_advanced_tool(name: str, arguments: Dict[str, Any], client: Oll
     
     if name == "suggest_models":
         return await _handle_suggest_models(arguments, client)
-    elif name == "download_model":
-        return await _handle_download_model(arguments, client)
-    elif name == "check_download_progress":
-        return await _handle_check_progress(arguments)
     elif name == "remove_model":
         return await _handle_remove_model(arguments, client)
     elif name == "start_ollama_server":
@@ -200,61 +167,6 @@ async def _handle_suggest_models(arguments: Dict[str, Any], client: OllamaClient
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-async def _handle_download_model(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
-    """Start asynchronous model download"""
-    model_name = arguments.get("model_name", "")
-    
-    if not model_name:
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "success": False,
-                "error": "Model name is required",
-                "example": "download_model with model_name='llama3.2'"
-            }, indent=2)
-        )]
-    
-    # Use ModelManager for download
-    model_manager = ModelManager(client)
-    result = await model_manager.download_model_async(model_name, show_progress=True)
-    
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
-
-
-async def _handle_check_progress(arguments: Dict[str, Any]) -> List[TextContent]:
-    """Check download progress"""
-    job_id = arguments.get("job_id", "")
-    
-    if not job_id:
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "success": False,
-                "error": "Job ID is required"
-            }, indent=2)
-        )]
-    
-    job_manager = get_job_manager()
-    status = job_manager.get_job_status(job_id)
-    
-    if status:
-        # Add progress visualization
-        progress = status.get("progress_percent", 0)
-        bar_length = 20
-        filled = int(bar_length * progress / 100)
-        progress_bar = "#" * filled + "-" * (bar_length - filled)
-        
-        status["progress_visualization"] = f"[{progress_bar}] {progress}%"
-        
-        return [TextContent(type="text", text=json.dumps(status, indent=2))]
-    else:
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "success": False,
-                "error": f"Job {job_id} not found"
-            }, indent=2)
-        )]
 
 
 async def _handle_remove_model(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:

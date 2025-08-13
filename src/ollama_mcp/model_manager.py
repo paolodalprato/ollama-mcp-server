@@ -17,7 +17,6 @@ from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass
 
 from .client import OllamaClient, ModelInfo
-from .job_manager import get_job_manager, JobManager
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,6 @@ class ModelManager:
             ollama_client: Optional OllamaClient instance
         """
         self.client = ollama_client or OllamaClient()
-        self.job_manager = get_job_manager()
         self.default_model: Optional[str] = None
         self._models_cache: Optional[Dict[str, Any]] = None
         logger.debug("Initialized ModelManager")
@@ -114,146 +112,6 @@ class ModelManager:
         except Exception as e:
             logger.error(f"Cache refresh failed: {e}")
             return False
-    
-    async def download_model_async(self, model_name: str, 
-                                  show_progress: bool = True) -> Dict[str, Any]:
-        """
-        Start asynchronous model download
-        
-        Args:
-            model_name: Name of model to download
-            show_progress: Whether to track progress
-            
-        Returns:
-            Dict with job ID for tracking
-        """
-        try:
-            # Validate model name
-            if not self._validate_model_name(model_name):
-                return {
-                    "success": False,
-                    "error": "Invalid model name format",
-                    "model_name": model_name
-                }
-            
-            # Check if model already exists
-            models_result = await self.client.list_models()
-            
-            if models_result["success"]:
-                for m in models_result["models"]:
-                    if m.name == model_name:
-                        return {
-                            "success": True,
-                            "message": f"Model {model_name} already exists locally",
-                            "model_name": model_name,
-                            "already_exists": True
-                        }
-            
-            # Create download job
-            job_id = self.job_manager.create_job(
-                job_type="model_download",
-                metadata={
-                    "model_name": model_name,
-                    "show_progress": show_progress
-                }
-            )
-            
-            # Start background download
-            job_started = await self.job_manager.start_job(
-                job_id,
-                self._download_model_job,
-                model_name,
-                show_progress
-            )
-            
-            if job_started:
-                return {
-                    "success": True,
-                    "job_id": job_id,
-                    "message": f"Download started for {model_name}",
-                    "model_name": model_name,
-                    "status": "started"
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": "Failed to start download job",
-                    "model_name": model_name
-                }
-                
-        except Exception as e:
-            logger.error(f"Error starting download for {model_name}: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "model_name": model_name
-            }
-    
-    async def _download_model_job(self, progress_callback: Callable, 
-                                 model_name: str, show_progress: bool) -> Dict[str, Any]:
-        """
-        Background job for model download
-        
-        Args:
-            progress_callback: Function to report progress
-            model_name: Model to download
-            show_progress: Whether to track progress
-            
-        Returns:
-            Dict with download results
-        """
-        try:
-            progress_callback(10, "Starting download...")
-            
-            start_time = time.time()
-            
-            # Use Ollama client for download
-            result = await self.client.pull_model(model_name)
-            
-            download_time = time.time() - start_time
-            
-            if result["success"]:
-                progress_callback(90, "Verifying download...")
-                
-                # Verify model is available
-                models_result = await self.client.list_models()
-                if models_result["success"]:
-                    model_found = any(m.name == model_name for m in models_result["models"])
-                else:
-                    model_found = False
-                
-                if model_found:
-                    progress_callback(100, "Download completed")
-                    
-                    # AUTO-REFRESH cache after successful download
-                    await self._refresh_model_cache()
-                    
-                    return {
-                        "success": True,
-                        "message": f"Model {model_name} downloaded successfully",
-                        "model_name": model_name,
-                        "download_time_seconds": download_time
-                    }
-                else:
-                    return {
-                        "success": False,
-                        "error": "Model not found after download",
-                        "model_name": model_name
-                    }
-            else:
-                return {
-                    "success": False,
-                    "error": result.get("error", "Download failed"),
-                    "model_name": model_name
-                }
-                
-        except Exception as e:
-            logger.error(f"Download job failed for {model_name}: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "model_name": model_name
-            }
     
     async def remove_model(self, model_name: str, force: bool = False) -> Dict[str, Any]:
         """
