@@ -19,16 +19,9 @@ import time
 from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
 
-import sys
-from pathlib import Path
-
-# Fix import path
-current_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(current_dir))
-
-from client import OllamaClient
-from job_manager import get_job_manager
-from model_manager import ModelManager
+from ollama_mcp.client import OllamaClient
+from ollama_mcp.job_manager import get_job_manager
+from ollama_mcp.model_manager import ModelManager
 
 
 def get_advanced_tools() -> List[Tool]:
@@ -36,7 +29,7 @@ def get_advanced_tools() -> List[Tool]:
     return [
         Tool(
             name="suggest_models",
-            description="Get intelligent model recommendations based on user requirements and system resources",
+            description="Suggests the best **locally installed** model for a specific task based on user needs.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -101,25 +94,6 @@ def get_advanced_tools() -> List[Tool]:
             }
         ),
         Tool(
-            name="search_available_models",
-            description="Search for available models in Ollama Hub",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "search_term": {
-                        "type": "string",
-                        "description": "Search term for finding models (e.g., 'code', 'chat', 'llama')"
-                    },
-                    "category": {
-                        "type": "string",
-                        "description": "Model category filter",
-                        "enum": ["all", "code", "chat", "reasoning", "multimodal", "small", "large"]
-                    }
-                },
-                "required": []
-            }
-        ),
-        Tool(
             name="start_ollama_server",
             description="Attempt to start Ollama server if it's not running",
             inputSchema={
@@ -141,6 +115,20 @@ def get_advanced_tools() -> List[Tool]:
                 },
                 "required": ["message"]
             }
+        ),
+        Tool(
+            name="test_model_responsiveness",
+            description="Test the responsiveness of a specific model by sending a simple prompt.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "model_name": {
+                        "type": "string",
+                        "description": "The name of the model to test."
+                    }
+                },
+                "required": ["model_name"]
+            }
         )
     ]
 
@@ -156,12 +144,12 @@ async def handle_advanced_tool(name: str, arguments: Dict[str, Any], client: Oll
         return await _handle_check_progress(arguments)
     elif name == "remove_model":
         return await _handle_remove_model(arguments, client)
-    elif name == "search_available_models":
-        return await _handle_search_models(arguments)
     elif name == "start_ollama_server":
         return await _handle_start_server(client)
     elif name == "select_chat_model":
         return await _handle_select_chat_model(arguments, client)
+    elif name == "test_model_responsiveness":
+        return await _handle_test_model_responsiveness(arguments, client)
     else:
         return [TextContent(
             type="text",
@@ -170,40 +158,42 @@ async def handle_advanced_tool(name: str, arguments: Dict[str, Any], client: Oll
 
 
 async def _handle_suggest_models(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
-    """Provide intelligent model recommendations based on user needs"""
+    """Suggests the best locally installed model for a given task."""
     user_needs = arguments.get("user_needs", "")
-    priority = arguments.get("priority", "balanced")
     
-    # Analyze user needs and generate recommendations
-    recommendations = _analyze_user_needs(user_needs, priority)
+    # 1. Get locally installed models
+    local_models_result = await client.list_models()
+    if not local_models_result["success"] or not local_models_result["models"]:
+        return [TextContent(type="text", text=json.dumps({
+            "success": False,
+            "error": "No local models found.",
+            "suggestion": "Download a model first using the 'download_model' tool."
+        }, indent=2))]
     
-    # Get system resources for compatibility check
-    try:
-        import psutil
-        memory_gb = psutil.virtual_memory().total / (1024**3)
-        available_gb = psutil.virtual_memory().available / (1024**3)
-    except:
-        memory_gb = 8  # Default assumption
-        available_gb = 4
-    
-    # Filter recommendations by system compatibility
-    compatible_models = []
-    for rec in recommendations:
-        if rec["min_ram_gb"] <= available_gb:
-            compatible_models.append(rec)
+    # 2. Get details for each local model
+    local_models = local_models_result["models"]
+    model_details = []
+    for model in local_models:
+        details = await client.show(model.name)
+        if details.get("success"):
+            model_details.append(details)
+
+    if not model_details:
+        return [TextContent(type="text", text=json.dumps({
+            "success": False,
+            "error": "Could not retrieve details for any local models."
+        }, indent=2))]
+
+    # 3. Analyze and rank models
+    recommendations = _analyze_local_models(user_needs, model_details)
     
     result = {
         "success": True,
         "user_request": user_needs,
-        "priority": priority,
-        "system_info": {
-            "total_memory_gb": round(memory_gb, 1),
-            "available_memory_gb": round(available_gb, 1)
-        },
-        "recommendations": compatible_models[:5],  # Top 5 recommendations
+        "recommendations": recommendations,
         "next_steps": {
-            "download": "Use 'download_model' tool with the model name",
-            "example": "download_model with model_name='llama3.2'"
+            "chat": "Use 'local_llm_chat' with the recommended model name.",
+            "example": f"local_llm_chat with model='{recommendations[0]['name'] if recommendations else '...'}' and message='Your question...'"
         }
     }
     
@@ -287,238 +277,16 @@ async def _handle_remove_model(arguments: Dict[str, Any], client: OllamaClient) 
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-async def _handle_search_models(arguments: Dict[str, Any]) -> List[TextContent]:
-    """Search for available models in Ollama Hub"""
-    search_term = arguments.get("search_term", "")
-    category = arguments.get("category", "all")
-    
-    # Curated model database with categories
-    available_models = [
-        {
-            "name": "llama3.2",
-            "description": "Meta's Llama 3.2 - Excellent general purpose model",
-            "size": "2GB",
-            "category": ["chat", "reasoning"],
-            "quality": "high",
-            "speed": "medium",
-            "min_ram_gb": 4
-        },
-        {
-            "name": "llama3.2:1b",
-            "description": "Compact Llama 3.2 - Fast and lightweight",
-            "size": "1.3GB", 
-            "category": ["chat", "small"],
-            "quality": "medium",
-            "speed": "fast",
-            "min_ram_gb": 2
-        },
-        {
-            "name": "qwen2.5:7b",
-            "description": "Alibaba's Qwen 2.5 - Strong reasoning and coding",
-            "size": "4.4GB",
-            "category": ["code", "reasoning", "chat"],
-            "quality": "high",
-            "speed": "medium",
-            "min_ram_gb": 6
-        },
-        {
-            "name": "qwen2.5-coder:7b",
-            "description": "Specialized coding model based on Qwen 2.5",
-            "size": "4.4GB",
-            "category": ["code"],
-            "quality": "high",
-            "speed": "medium", 
-            "min_ram_gb": 6
-        },
-        {
-            "name": "phi3.5",
-            "description": "Microsoft's Phi 3.5 - Compact but capable",
-            "size": "2.2GB",
-            "category": ["chat", "reasoning", "small"],
-            "quality": "high",
-            "speed": "fast",
-            "min_ram_gb": 3
-        },
-        {
-            "name": "mistral:7b",
-            "description": "Mistral 7B - Fast and efficient general model",
-            "size": "4.1GB",
-            "category": ["chat", "reasoning"],
-            "quality": "high",
-            "speed": "fast",
-            "min_ram_gb": 5
-        },
-        {
-            "name": "codellama:7b",
-            "description": "Meta's Code Llama - Specialized for programming",
-            "size": "3.8GB",
-            "category": ["code"],
-            "quality": "high",
-            "speed": "medium",
-            "min_ram_gb": 5
-        }
-    ]
-    
-    # Filter by search term and category
-    filtered_models = []
-    for model in available_models:
-        # Category filter
-        if category != "all" and category not in model["category"]:
-            continue
-        
-        # Search term filter
-        if search_term and search_term.lower() not in model["name"].lower() and search_term.lower() not in model["description"].lower():
-            continue
-        
-        filtered_models.append(model)
-    
-    result = {
-        "success": True,
-        "search_term": search_term,
-        "category": category,
-        "models_found": len(filtered_models),
-        "models": filtered_models,
-        "download_instruction": "Use 'download_model' tool with the model name to download"
-    }
-    
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
 async def _handle_start_server(client: OllamaClient) -> List[TextContent]:
-    """Attempt to start Ollama server using Desktop Commander pattern"""
-    import platform
-    import subprocess
+    """Attempt to start Ollama server using the dedicated OllamaServerController."""
+    from ollama_mcp.ollama_server_control import OllamaServerController
+
+    controller = OllamaServerController(host=client.host)
+    result = await controller.start_server()
     
-    try:
-        # First check if already running
-        health = await client.health_check()
-        if health["healthy"]:
-            return [TextContent(
-                type="text",
-                text=json.dumps({
-                    "success": True,
-                    "message": "Ollama server is already running",
-                    "status": "already_active",
-                    "server_url": health["host"]
-                }, indent=2)
-            )]
-        
-        # Use Desktop Commander approach: spawn with shell=True
-        try:
-            # Platform-specific spawn configuration
-            spawn_options = {"shell": True}
-            if platform.system() == "Windows":
-                spawn_options["creationflags"] = subprocess.CREATE_NO_WINDOW
-            
-            # Start ollama serve process (Desktop Commander pattern)
-            process = subprocess.Popen(
-                ["ollama", "serve"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                **spawn_options
-            )
-            
-            if not process.pid:
-                return [TextContent(
-                    type="text",
-                    text=json.dumps({
-                        "success": False,
-                        "message": "Failed to get process ID for Ollama server",
-                        "status": "spawn_failed"
-                    }, indent=2)
-                )]
-            
-            # Wait for server to become healthy (Desktop Commander timeout pattern)
-            startup_timeout = 15  # seconds
-            for attempt in range(startup_timeout):
-                await asyncio.sleep(1)
-                
-                # Check if process is still running
-                if process.poll() is not None:
-                    # Process exited, read error output
-                    stderr_output = process.stderr.read().decode() if process.stderr else "No error output"
-                    return [TextContent(
-                        type="text",
-                        text=json.dumps({
-                            "success": False,
-                            "message": f"Ollama process exited during startup (exit code: {process.returncode})",
-                            "status": "process_exited",
-                            "error_output": stderr_output,
-                            "troubleshooting": {
-                                "check_installation": "Verify Ollama is properly installed",
-                                "check_permissions": "Ensure you have permission to start services",
-                                "manual_start": "Try running 'ollama serve' manually in terminal"
-                            }
-                        }, indent=2)
-                    )]
-                
-                # Check if server is healthy
-                health_check = await client.health_check()
-                if health_check["healthy"]:
-                    return [TextContent(
-                        type="text",
-                        text=json.dumps({
-                            "success": True,
-                            "message": f"Ollama server started successfully in {attempt + 1} seconds",
-                            "status": "started",
-                            "server_url": health_check["host"],
-                            "process_id": process.pid,
-                            "startup_time": f"{attempt + 1}s",
-                            "next_steps": "You can now use other tools like 'list_local_models'"
-                        }, indent=2)
-                    )]
-            
-            # Timeout reached
-            return [TextContent(
-                type="text",
-                text=json.dumps({
-                    "success": False,
-                    "message": f"Ollama server did not start within {startup_timeout} seconds",
-                    "status": "startup_timeout",
-                    "process_id": process.pid,
-                    "troubleshooting": {
-                        "check_logs": "Check Ollama logs for startup errors",
-                        "port_check": "Verify port 11434 is not in use",
-                        "manual_start": "Try running 'ollama serve' manually in terminal",
-                        "system_resources": "Ensure sufficient system resources are available"
-                    }
-                }, indent=2)
-            )]
-                
-        except FileNotFoundError:
-            return [TextContent(
-                type="text",
-                text=json.dumps({
-                    "success": False,
-                    "message": "Ollama not found on system",
-                    "status": "not_installed",
-                    "solution": {
-                        "download": "Install Ollama from https://ollama.com",
-                        "verify": "After installation, restart your terminal and ensure 'ollama' is in PATH"
-                    }
-                }, indent=2)
-            )]
-        
-        except OSError as e:
-            return [TextContent(
-                type="text",
-                text=json.dumps({
-                    "success": False,
-                    "message": f"Operating system error starting Ollama: {str(e)}",
-                    "status": "os_error",
-                    "suggestion": "Check system permissions and PATH configuration"
-                }, indent=2)
-            )]
-            
-    except Exception as e:
-        return [TextContent(
-            type="text",
-            text=json.dumps({
-                "success": False,
-                "message": f"Unexpected error starting Ollama: {str(e)}",
-                "status": "error"
-            }, indent=2)
-        )]
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
 async def _handle_select_chat_model(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
@@ -572,139 +340,57 @@ async def _handle_select_chat_model(arguments: Dict[str, Any], client: OllamaCli
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-def _analyze_user_needs(user_needs: str, priority: str) -> List[Dict[str, Any]]:
-    """Analyze user requirements and return model recommendations"""
-    needs_lower = user_needs.lower()
+async def _handle_test_model_responsiveness(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
+    """Handle testing a model's responsiveness."""
+    model_name = arguments.get("model_name")
+    if not model_name:
+        return [TextContent(type="text", text=json.dumps({"success": False, "error": "model_name is a required argument."}, indent=2))]
+
+    model_manager = ModelManager(client)
+    # The responsiveness test is a private method, but we can call it here for the tool.
+    # A cleaner refactor could make it a public method if desired.
+    result = await model_manager._test_model_responsiveness(model_name)
     
-    # Base recommendations with scoring
-    recommendations = []
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+def _analyze_local_models(user_needs: str, model_details: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Analyze local models based on user needs and return ranked recommendations."""
+    user_keywords = set(user_needs.lower().split())
     
-    # Coding/Programming
-    if any(word in needs_lower for word in ["code", "programming", "develop", "script", "python", "javascript"]):
-        recommendations.extend([
-            {
-                "model_name": "qwen2.5-coder:7b",
-                "score": 95,
-                "reasons": ["Specialized for coding", "Excellent code generation", "Strong debugging"],
-                "size": "4.4GB",
-                "min_ram_gb": 6,
-                "estimated_speed": "medium",
-                "quality": "high"
-            },
-            {
-                "model_name": "codellama:7b", 
-                "score": 85,
-                "reasons": ["Meta's code specialist", "Good for multiple languages", "Strong comments"],
-                "size": "3.8GB",
-                "min_ram_gb": 5,
-                "estimated_speed": "medium",
-                "quality": "high"
-            }
-        ])
+    scored_models = []
+    for details in model_details:
+        score = 0
+        reasons = []
+
+        model_name = details.get("name", "")
+
+        # Combine all text data from the model details for keyword searching
+        searchable_text = model_name.lower()
+        searchable_text += details.get("modelfile", "").lower()
+        searchable_text += json.dumps(details.get("details", {})).lower()
+
+        # Score based on keyword matches
+        for keyword in user_keywords:
+            if keyword in searchable_text:
+                score += 10
+                reasons.append(f"Matches keyword '{keyword}'")
+
+        # Boost score for models that are explicitly for coding if user needs it
+        if ("code" in user_keywords or "programming" in user_keywords) and "cod" in model_name.lower():
+            score += 20
+            reasons.append("Model name suggests it is specialized for coding.")
+
+        if score > 0:
+            scored_models.append({
+                "name": model_name,
+                "score": score,
+                "reasons": reasons,
+                "family": details.get("details", {}).get("family"),
+                "parameter_size": details.get("details", {}).get("parameter_size"),
+            })
     
-    # Creative Writing
-    if any(word in needs_lower for word in ["write", "creative", "story", "novel", "article", "content"]):
-        recommendations.extend([
-            {
-                "model_name": "llama3.2",
-                "score": 90,
-                "reasons": ["Excellent creative writing", "Natural language flow", "Good storytelling"],
-                "size": "2GB",
-                "min_ram_gb": 4,
-                "estimated_speed": "medium",
-                "quality": "high"
-            },
-            {
-                "model_name": "mistral:7b",
-                "score": 80,
-                "reasons": ["Creative and coherent", "Good narrative skills", "Fast generation"],
-                "size": "4.1GB", 
-                "min_ram_gb": 5,
-                "estimated_speed": "fast",
-                "quality": "high"
-            }
-        ])
+    # Sort by score
+    scored_models.sort(key=lambda x: x["score"], reverse=True)
     
-    # General Chat/Conversation
-    if any(word in needs_lower for word in ["chat", "talk", "conversation", "help", "assistant", "general"]):
-        recommendations.extend([
-            {
-                "model_name": "llama3.2",
-                "score": 85,
-                "reasons": ["Excellent conversational AI", "Helpful and informative", "Good reasoning"],
-                "size": "2GB",
-                "min_ram_gb": 4,
-                "estimated_speed": "medium", 
-                "quality": "high"
-            },
-            {
-                "model_name": "phi3.5",
-                "score": 80,
-                "reasons": ["Compact but capable", "Good general knowledge", "Fast responses"],
-                "size": "2.2GB",
-                "min_ram_gb": 3,
-                "estimated_speed": "fast",
-                "quality": "high"
-            }
-        ])
-    
-    # Analysis/Reasoning
-    if any(word in needs_lower for word in ["analyze", "analysis", "reasoning", "logic", "research", "understand"]):
-        recommendations.extend([
-            {
-                "model_name": "qwen2.5:7b",
-                "score": 92,
-                "reasons": ["Strong analytical reasoning", "Good at complex problems", "Detailed explanations"],
-                "size": "4.4GB",
-                "min_ram_gb": 6,
-                "estimated_speed": "medium",
-                "quality": "high"
-            }
-        ])
-    
-    # If no specific category detected, provide general recommendations
-    if not recommendations:
-        recommendations.extend([
-            {
-                "model_name": "llama3.2",
-                "score": 85,
-                "reasons": ["Versatile general-purpose model", "Good balance of capabilities", "Reliable performance"],
-                "size": "2GB",
-                "min_ram_gb": 4,
-                "estimated_speed": "medium",
-                "quality": "high"
-            },
-            {
-                "model_name": "phi3.5",
-                "score": 75,
-                "reasons": ["Lightweight but capable", "Good for general tasks", "Lower resource requirements"],
-                "size": "2.2GB",
-                "min_ram_gb": 3,
-                "estimated_speed": "fast",
-                "quality": "medium"
-            }
-        ])
-    
-    # Adjust scores based on priority
-    if priority == "speed":
-        for rec in recommendations:
-            if rec["estimated_speed"] == "fast":
-                rec["score"] += 10
-            elif rec["estimated_speed"] == "slow":
-                rec["score"] -= 10
-    elif priority == "quality":
-        for rec in recommendations:
-            if rec["quality"] == "high":
-                rec["score"] += 15
-            elif rec["quality"] == "medium":
-                rec["score"] -= 5
-    
-    # Sort by score and remove duplicates
-    seen_models = set()
-    unique_recommendations = []
-    for rec in sorted(recommendations, key=lambda x: x["score"], reverse=True):
-        if rec["model_name"] not in seen_models:
-            seen_models.add(rec["model_name"])
-            unique_recommendations.append(rec)
-    
-    return unique_recommendations
+    return scored_models

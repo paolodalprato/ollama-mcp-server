@@ -1,7 +1,7 @@
 """
 Ollama Server Control Module
-Gestisce start/stop/controllo del server Ollama locale per MCP v0.9
-Basato su Bridge v1.0 funzionante
+Manages starting, stopping, and monitoring the local Ollama server for MCP v0.9.
+Based on the working Bridge v1.0 implementation.
 """
 
 import asyncio
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 @dataclass
 class OllamaProcessInfo:
-    """Informazioni sul processo Ollama"""
+    """Information about the Ollama process."""
     pid: Optional[int]
     status: str  # "running", "stopped", "unknown"
     port: int
@@ -26,7 +26,7 @@ class OllamaProcessInfo:
 
 
 class OllamaServerController:
-    """Controller per gestire il server Ollama"""
+    """Controller to manage the Ollama server."""
     
     def __init__(self, host: str = "http://localhost:11434"):
         self.host = host
@@ -34,16 +34,16 @@ class OllamaServerController:
         self.logger = logging.getLogger(__name__)
         
     async def get_server_status(self) -> OllamaProcessInfo:
-        """Ottieni status dettagliato del server Ollama"""
+        """Get detailed status of the Ollama server."""
         try:
-            # Cerca processo Ollama
+            # Find the Ollama process
             ollama_pid = None
             ollama_process = None
             
             for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time']):
                 try:
                     if proc.info['name'] and 'ollama' in proc.info['name'].lower():
-                        # Verifica che sia il server (non client commands)
+                        # Verify it's the server (not client commands)
                         cmdline = proc.info.get('cmdline', [])
                         if any('serve' in str(cmd).lower() for cmd in cmdline) or \
                            any('11434' in str(cmd) for cmd in cmdline):
@@ -55,7 +55,7 @@ class OllamaServerController:
             
             if ollama_process:
                 try:
-                    # Ottieni info dettagliate processo
+                    # Get detailed process info
                     memory_info = ollama_process.memory_info()
                     memory_mb = memory_info.rss / 1024 / 1024
                     cpu_percent = ollama_process.cpu_percent()
@@ -102,21 +102,21 @@ class OllamaServerController:
             )
     
     async def start_server(self) -> Dict[str, Any]:
-        """Avvia il server Ollama"""
+        """Start the Ollama server."""
         try:
-            # Verifica se già in esecuzione
+            # Check if already running
             status = await self.get_server_status()
             if status.status == "running":
                 return {
                     "success": True,
-                    "message": "Ollama server già in esecuzione",
+                    "message": "Ollama server is already running.",
                     "pid": status.pid,
                     "already_running": True
                 }
             
-            # Determina comando di avvio basato su OS
+            # Determine start command based on OS
             if platform.system() == "Windows":
-                # Su Windows, ollama serve si avvia in background
+                # On Windows, 'ollama serve' starts in the background
                 process = subprocess.Popen(
                     ["ollama", "serve"],
                     stdout=subprocess.PIPE,
@@ -124,36 +124,36 @@ class OllamaServerController:
                     creationflags=subprocess.CREATE_NO_WINDOW
                 )
             else:
-                # Su Linux/macOS
+                # On Linux/macOS
                 process = subprocess.Popen(
                     ["ollama", "serve"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
                 )
             
-            # Attendi che il server si avvii (max 10 secondi)
+            # Wait for the server to start (max 10 seconds)
             for i in range(10):
                 await asyncio.sleep(1)
                 status = await self.get_server_status()
                 if status.status == "running":
                     return {
                         "success": True,
-                        "message": "Ollama server avviato con successo",
+                        "message": "Ollama server started successfully.",
                         "pid": status.pid,
                         "startup_time_seconds": i + 1
                     }
             
-            # Se non si è avviato entro 10 secondi
+            # If it hasn't started within 10 seconds
             return {
                 "success": False,
-                "message": "Timeout: Ollama server non si è avviato entro 10 secondi",
+                "message": "Timeout: Ollama server did not start within 10 seconds.",
                 "error": "startup_timeout"
             }
             
         except FileNotFoundError:
             return {
                 "success": False,
-                "message": "Ollama non trovato. Assicurati che sia installato e nel PATH",
+                "message": "Ollama not found. Please ensure it is installed and in your system's PATH.",
                 "error": "ollama_not_found",
                 "install_guide": self._get_install_guide()
             }
@@ -161,65 +161,65 @@ class OllamaServerController:
             self.logger.error(f"Error starting Ollama server: {e}")
             return {
                 "success": False,
-                "message": f"Errore nell'avvio del server: {str(e)}",
+                "message": f"Error starting server: {str(e)}",
                 "error": str(e)
             }
     
     async def stop_server(self) -> Dict[str, Any]:
-        """Ferma il server Ollama"""
+        """Stop the Ollama server."""
         try:
             status = await self.get_server_status()
             
             if status.status != "running":
                 return {
                     "success": True,
-                    "message": "Ollama server non è in esecuzione",
+                    "message": "Ollama server is not running.",
                     "already_stopped": True
                 }
             
             if status.pid is None:
                 return {
                     "success": False,
-                    "message": "Impossibile trovare il PID del processo Ollama",
+                    "message": "Could not find the PID of the Ollama process.",
                     "error": "pid_not_found"
                 }
             
-            # Termina il processo
+            # Terminate the process
             try:
                 process = psutil.Process(status.pid)
                 process.terminate()
                 
-                # Attendi che il processo termini (max 5 secondi)
+                # Wait for the process to terminate (max 5 seconds)
                 for i in range(5):
                     await asyncio.sleep(1)
                     if not process.is_running():
                         return {
                             "success": True,
-                            "message": "Ollama server fermato con successo",
+                            "message": "Ollama server stopped successfully.",
                             "shutdown_time_seconds": i + 1
                         }
                 
-                # Se non si è fermato, forza la terminazione
+                # If it didn't stop, force kill it
                 process.kill()
                 await asyncio.sleep(1)
                 
                 if not process.is_running():
                     return {
                         "success": True,
-                        "message": "Ollama server fermato forzatamente",
+                        "message": "Ollama server stopped forcefully.",
                         "forced_shutdown": True
                     }
                 else:
                     return {
                         "success": False,
-                        "message": "Impossibile fermare il server Ollama",
+                        "message": "Failed to stop the Ollama server.",
                         "error": "shutdown_failed"
                     }
                     
             except psutil.NoSuchProcess:
                 return {
                     "success": True,
-                    "message": "Ollama server già fermato",
+                    "message": "Ollama server was already stopped.",
                     "already_stopped": True
                 }
                 
@@ -227,40 +227,40 @@ class OllamaServerController:
             self.logger.error(f"Error stopping Ollama server: {e}")
             return {
                 "success": False,
-                "message": f"Errore nella terminazione del server: {str(e)}",
+                "message": f"Error stopping server: {str(e)}",
                 "error": str(e)
             }
     
     async def restart_server(self) -> Dict[str, Any]:
-        """Riavvia il server Ollama"""
+        """Restart the Ollama server."""
         try:
-            # Prima ferma il server
+            # First, stop the server
             stop_result = await self.stop_server()
             
             if not stop_result["success"] and not stop_result.get("already_stopped", False):
                 return {
                     "success": False,
-                    "message": "Impossibile fermare il server per il riavvio",
+                    "message": "Could not stop the server for restart.",
                     "error": stop_result.get("error", "stop_failed")
                 }
             
-            # Attendi un momento prima di riavviare
+            # Wait a moment before restarting
             await asyncio.sleep(2)
             
-            # Poi riavvia
+            # Then, start it again
             start_result = await self.start_server()
             
             if start_result["success"]:
                 return {
                     "success": True,
-                    "message": "Ollama server riavviato con successo",
+                    "message": "Ollama server restarted successfully.",
                     "restart_completed": True,
                     "new_pid": start_result.get("pid")
                 }
             else:
                 return {
                     "success": False,
-                    "message": "Riavvio fallito: impossibile riavviare il server",
+                    "message": "Restart failed: could not start the server.",
                     "error": start_result.get("error", "restart_failed")
                 }
                 
@@ -268,32 +268,32 @@ class OllamaServerController:
             self.logger.error(f"Error restarting Ollama server: {e}")
             return {
                 "success": False,
-                "message": f"Errore nel riavvio del server: {str(e)}",
+                "message": f"Error restarting server: {str(e)}",
                 "error": str(e)
             }
     
     def _get_install_guide(self) -> Dict[str, str]:
-        """Restituisce guida installazione per l'OS corrente"""
+        """Returns an installation guide for the current OS."""
         os_name = platform.system()
         
         if os_name == "Windows":
             return {
                 "download_url": "https://ollama.com/download/windows",
-                "instructions": "1. Scarica Ollama per Windows dal link sopra\n2. Esegui l'installer\n3. Riavvia il terminale\n4. Digita: ollama serve"
+                "instructions": "1. Download Ollama for Windows from the link above.\n2. Run the installer.\n3. Restart your terminal.\n4. Type: ollama serve"
             }
         elif os_name == "Darwin":  # macOS
             return {
                 "download_url": "https://ollama.com/download/mac",
-                "instructions": "1. Scarica Ollama per macOS dal link sopra\n2. Trascina Ollama nella cartella Applicazioni\n3. Apri Terminal e digita: ollama serve"
+                "instructions": "1. Download Ollama for macOS from the link above.\n2. Drag Ollama to your Applications folder.\n3. Open Terminal and type: ollama serve"
             }
         else:  # Linux
             return {
                 "download_url": "https://ollama.com/download/linux",
-                "instructions": "1. Esegui: curl -fsSL https://ollama.com/install.sh | sh\n2. Oppure scarica manualmente dal link sopra\n3. Avvia con: ollama serve"
+                "instructions": "1. Run: curl -fsSL https://ollama.com/install.sh | sh\n2. Or download manually from the link above.\n3. Start with: ollama serve"
             }
     
     def format_uptime(self, seconds: Optional[int]) -> str:
-        """Formatta uptime in modo leggibile"""
+        """Formats uptime in a human-readable way."""
         if seconds is None:
             return "N/A"
         
@@ -309,7 +309,7 @@ class OllamaServerController:
             return f"{hours}h {minutes}m"
     
     async def get_diagnostic_info(self) -> Dict[str, Any]:
-        """Ottieni informazioni diagnostiche complete"""
+        """Get comprehensive diagnostic information."""
         diagnostic = {
             "ollama_installed": False,
             "ollama_in_path": False,
@@ -320,7 +320,7 @@ class OllamaServerController:
         }
         
         try:
-            # Verifica se Ollama è installato
+            # Check if Ollama is installed
             result = subprocess.run(["ollama", "--version"], 
                                   capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
@@ -328,9 +328,9 @@ class OllamaServerController:
                 diagnostic["ollama_in_path"] = True
                 diagnostic["ollama_version"] = result.stdout.strip()
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            diagnostic["recommendations"].append("Installare Ollama dal sito ufficiale")
+            diagnostic["recommendations"].append("Install Ollama from the official website.")
         
-        # Verifica status server
+        # Check server status
         status = await self.get_server_status()
         diagnostic["server_running"] = status.status == "running"
         
@@ -342,9 +342,9 @@ class OllamaServerController:
                 "cpu_percent": status.cpu_percent
             }
         else:
-            diagnostic["recommendations"].append("Avviare Ollama server con: ollama serve")
+            diagnostic["recommendations"].append("Start the Ollama server with: ollama serve")
         
-        # Informazioni sistema
+        # System information
         try:
             diagnostic["system_resources"] = {
                 "cpu_count": psutil.cpu_count(),

@@ -21,21 +21,10 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-# Ensure local imports work
-current_dir = Path(__file__).parent
-sys.path.insert(0, str(current_dir))
-
-from client import OllamaClient
-from config import get_config
-from tools import get_base_tools, handle_base_tool
-from tools.advanced_tools import get_advanced_tools, handle_advanced_tool
-
-# Force reload modules to apply code changes
-import importlib
-import model_manager
-import tools.advanced_tools
-importlib.reload(model_manager)
-importlib.reload(tools.advanced_tools)
+from ollama_mcp.client import OllamaClient
+from ollama_mcp.config import get_config
+from ollama_mcp.tools.base_tools import get_base_tools, handle_base_tool
+from ollama_mcp.tools.advanced_tools import get_advanced_tools, handle_advanced_tool
 
 logger = logging.getLogger(__name__)
 
@@ -96,12 +85,8 @@ class OllamaMCPServer:
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Route tool calls to appropriate handlers (v1.0 pattern)"""
             try:
-                # Define advanced tool names
-                advanced_tool_names = {
-                    "suggest_models", "download_model", "check_download_progress",
-                    "remove_model", "search_available_models", 
-                    "start_ollama_server", "select_chat_model"
-                }
+                # Get the names of the advanced tools to route the call correctly.
+                advanced_tool_names = {t.name for t in get_advanced_tools()}
                 
                 # Route to appropriate handler
                 if name in advanced_tool_names:
@@ -130,7 +115,9 @@ class OllamaMCPServer:
                     logger.warning("Ollama not accessible: %s", health['error'])
                     logger.info("Server will start anyway - tools provide diagnostics")
             
-            logger.info("MCP server ready - 11 tools available (4 base + 7 advanced)")
+            num_base_tools = len(get_base_tools())
+            num_advanced_tools = len(get_advanced_tools())
+            logger.info(f"MCP server ready - {num_base_tools + num_advanced_tools} tools available ({num_base_tools} base + {num_advanced_tools} advanced)")
             
             # Start MCP stdio server
             async with stdio_server() as (read_stream, write_stream):

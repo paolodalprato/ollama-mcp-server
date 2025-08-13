@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from config import ServerConfig, get_config
+from .config import OllamaConfig as ServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -69,45 +69,6 @@ class OllamaProcessInfo:
             return f"{hours}h {minutes}m"
 
 
-@dataclass
-class OllamaServerConfig:
-    """
-    DEPRECATED: Use config.ServerConfig instead
-    
-    This class is maintained for backward compatibility.
-    """
-    host: str = "localhost"
-    port: int = 11434
-    startup_timeout: int = 10
-    shutdown_timeout: int = 5
-    custom_path: Optional[Path] = None
-    environment_vars: Dict[str, str] = field(default_factory=dict)
-    
-    def __post_init__(self):
-        """Validate configuration after creation"""
-        import warnings
-        warnings.warn(
-            "OllamaServerConfig is deprecated. Use config.ServerConfig instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        self._validate_configuration()
-    
-    def _validate_configuration(self):
-        """Validate configuration values"""
-        if not 1024 <= self.port <= 65535:
-            raise ValueError(f"Invalid port: {self.port}")
-        
-        if self.startup_timeout < 1:
-            self.startup_timeout = 10
-            
-        if self.shutdown_timeout < 1:
-            self.shutdown_timeout = 5
-    
-    @property
-    def full_url(self) -> str:
-        """Get full server URL"""
-        return f"http://{self.host}:{self.port}"
 
 
 class CrossPlatformProcessManager:
@@ -235,14 +196,14 @@ class OllamaServerManager:
     across Windows, Linux, and macOS platforms.
     """
     
-    def __init__(self, config: Optional[OllamaServerConfig] = None):
+    def __init__(self, config: Optional[ServerConfig] = None):
         """
         Initialize server manager
         
         Args:
             config: Server configuration, uses defaults if None
         """
-        self.config = config or OllamaServerConfig()
+        self.config = config or ServerConfig()
         self.process_manager = CrossPlatformProcessManager()
         self._cached_executable_path: Optional[Path] = None
         

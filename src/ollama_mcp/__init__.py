@@ -14,11 +14,11 @@ __author__ = "Paolo Dalprato"
 __email__ = "paolo@dalprato.dev"
 __license__ = "MIT"
 
-from client import OllamaClient
-from server_manager import OllamaServerManager
-from model_manager import ModelManager
-from job_manager import JobManager
-from hardware_checker import HardwareChecker
+from .client import OllamaClient
+from .server_manager import OllamaServerManager
+from .model_manager import ModelManager
+from .job_manager import JobManager
+from .hardware_checker import HardwareChecker
 
 __all__ = [
     "OllamaClient",

@@ -1,3 +1,4 @@
+LICENSE
 README.md
 pyproject.toml
 src/ollama_mcp/__init__.py
@@ -6,10 +7,12 @@ src/ollama_mcp/config.py
 src/ollama_mcp/hardware_checker.py
 src/ollama_mcp/job_manager.py
 src/ollama_mcp/model_manager.py
-src/ollama_mcp/model_manager_extended_REMOVED.py
+src/ollama_mcp/ollama_server_control.py
 src/ollama_mcp/server.py
 src/ollama_mcp/server_manager.py
-src/ollama_mcp/server_v1_backup.py
+src/ollama_mcp/tools/__init__.py
+src/ollama_mcp/tools/advanced_tools.py
+src/ollama_mcp/tools/base_tools.py
 src/ollama_mcp_server.egg-info/PKG-INFO
 src/ollama_mcp_server.egg-info/SOURCES.txt
 src/ollama_mcp_server.egg-info/dependency_links.txt

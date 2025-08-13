@@ -16,22 +16,10 @@ import time
 from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass
 
-from client import OllamaClient, ModelInfo
-from job_manager import get_job_manager, JobManager
+from .client import OllamaClient, ModelInfo
+from .job_manager import get_job_manager, JobManager
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class ModelRecommendation:
-    """Model recommendation with scoring"""
-    model_name: str
-    score: float
-    reasons: List[str]
-    hardware_compatible: bool
-    estimated_ram_gb: Optional[float]
-    estimated_speed: str  # "fast", "medium", "slow"
-    quality_rating: str   # "high", "medium", "basic"
-
 
 class ModelManager:
     """
@@ -71,33 +59,22 @@ class ModelManager:
                     "models": []
                 }
             
-            # Enhance models with additional metadata
-            enhanced_models = []
-            for model in models_result["models"]:
-                enhanced = {
+            # Format models for output
+            formatted_models = [
+                {
                     "name": model.name,
                     "size_bytes": model.size,
                     "size_human": model.size_human,
                     "modified": model.modified,
-                    "digest": model.digest,
                     "is_default": model.name == self.default_model
                 }
-                
-                # Add responsiveness test
-                try:
-                    responsive = await self._test_model_responsiveness(model.name)
-                    enhanced["responsive"] = responsive["responsive"]
-                    enhanced["response_time_ms"] = responsive.get("response_time_ms", 0)
-                except Exception:
-                    enhanced["responsive"] = None
-                    enhanced["response_time_ms"] = None
-                
-                enhanced_models.append(enhanced)
+                for model in models_result["models"]
+            ]
             
             return {
                 "success": True,
-                "models": enhanced_models,
-                "total_models": len(enhanced_models),
+                "models": formatted_models,
+                "total_models": len(formatted_models),
                 "default_model": self.default_model
             }
             

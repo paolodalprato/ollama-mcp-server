@@ -19,7 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum
 
-from config import HardwareConfig, get_config
+import json
+from .config import HardwareConfig, get_config
 
 logger = logging.getLogger(__name__)
 
@@ -135,31 +136,6 @@ class SystemInfo:
         return max(gpus, key=lambda g: g.total_memory_mb) if gpus else None
 
 
-@dataclass
-class ModelCompatibility:
-    """
-    Model compatibility assessment with detailed analysis
-    
-    Provides comprehensive compatibility analysis for models.
-    """
-    model_name: str
-    compatible: bool
-    estimated_ram_gb: float
-    estimated_vram_gb: float
-    performance_tier: str  # "excellent", "good", "moderate", "poor"
-    reasons: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
-    
-    def __post_init__(self):
-        """Validate compatibility after creation"""
-        self._validate_values()
-    
-    def _validate_values(self):
-        """Validate compatibility values"""
-        valid_tiers = {"excellent", "good", "moderate", "poor"}
-        if self.performance_tier not in valid_tiers:
-            self.performance_tier = "moderate"
 
 
 class CrossPlatformGPUDetector:
@@ -553,196 +529,6 @@ class HardwareChecker:
                 }
             }
     
-    async def check_model_compatibility(self, model_name: str) -> Dict[str, Any]:
-        """
-        Check if a specific model is compatible with current system
-        
-        Args:
-            model_name: Name of model to check
-            
-        Returns:
-            Dict with comprehensive compatibility assessment
-        """
-        try:
-            # Get system info
-            system_result = await self.get_system_info()
-            if not system_result["success"]:
-                return {
-                    "success": False,
-                    "error": "Could not retrieve system information"
-                }
-            
-            system_info = system_result["system_info"]
-            
-            # Estimate model requirements
-            estimated_ram = self._estimate_model_ram_requirements(model_name)
-            estimated_vram = self._estimate_model_vram_requirements(model_name)
-            
-            # Check compatibility
-            compatibility = self._assess_model_compatibility(
-                model_name, system_info, estimated_ram, estimated_vram
-            )
-            
-            return {
-                "success": True,
-                "model_name": model_name,
-                "compatibility": {
-                    "compatible": compatibility.compatible,
-                    "performance_tier": compatibility.performance_tier,
-                    "estimated_ram_gb": compatibility.estimated_ram_gb,
-                    "estimated_vram_gb": compatibility.estimated_vram_gb,
-                    "reasons": compatibility.reasons,
-                    "warnings": compatibility.warnings,
-                    "recommendations": compatibility.recommendations
-                },
-                "system_requirements": {
-                    "estimated_ram_gb": estimated_ram,
-                    "estimated_vram_gb": estimated_vram,
-                    "minimum_ram_gb": estimated_ram * 1.2,
-                    "recommended_ram_gb": estimated_ram * 1.5,
-                    "supports_gpu_acceleration": system_info["has_gpu"]
-                }
-            }
-        
-        except Exception as e:
-            logger.error(f"Error checking model compatibility for {model_name}: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "model_name": model_name
-            }
-    
-    def _estimate_model_ram_requirements(self, model_name: str) -> float:
-        """
-        Estimate RAM requirements for a model in GB
-        
-        Enhanced estimation with better model family recognition.
-        """
-        name_lower = model_name.lower()
-        
-        # Parameter-based estimation with improved patterns
-        size_patterns = [
-            ('405b', 250.0), ('70b', 48.0), ('72b', 48.0),
-            ('35b', 24.0), ('34b', 24.0), ('33b', 22.0),
-            ('20b', 16.0), ('15b', 12.0), ('14b', 12.0),
-            ('13b', 10.0), ('11b', 9.0), ('8b', 6.0),
-            ('7b', 5.0), ('6b', 4.5), ('3b', 2.5),
-            ('1.5b', 1.5), ('1b', 1.0)
-        ]
-        
-        for pattern, ram in size_patterns:
-            if pattern in name_lower:
-                return ram
-        
-        # Model family defaults
-        family_defaults = {
-            'llama3': 6.0, 'llama2': 5.0, 'mistral': 5.0,
-            'mixtral': 24.0, 'command': 24.0, 'qwen': 6.0,
-            'codellama': 8.0, 'deepseek': 8.0, 'phi': 2.5,
-            'gemma': 4.0, 'neural-chat': 5.0, 'starcode': 6.0
-        }
-        
-        for family, default_ram in family_defaults.items():
-            if family in name_lower:
-                return default_ram
-        
-        return 4.0  # Conservative default
-    
-    def _estimate_model_vram_requirements(self, model_name: str) -> float:
-        """Estimate VRAM requirements for GPU acceleration"""
-        base_ram = self._estimate_model_ram_requirements(model_name)
-        # VRAM typically needs less due to optimizations
-        return base_ram * 0.75
-    
-    def _assess_model_compatibility(self, model_name: str, system_info: Dict,
-                                   estimated_ram: float, estimated_vram: float) -> ModelCompatibility:
-        """
-        Assess model compatibility with comprehensive analysis
-        
-        Enhanced compatibility assessment with performance tiers.
-        """
-        reasons = []
-        warnings = []
-        recommendations = []
-        compatible = True
-        performance_tier = "excellent"
-        
-        available_ram = system_info["available_ram_gb"]
-        total_ram = system_info["total_ram_gb"]
-        has_gpu = system_info["has_gpu"]
-        
-        # RAM compatibility check
-        if estimated_ram > available_ram:
-            compatible = False
-            performance_tier = "poor"
-            reasons.append(f"Insufficient RAM: {estimated_ram:.1f}GB needed, {available_ram:.1f}GB available")
-            
-            if estimated_ram > total_ram:
-                recommendations.append(f"Upgrade RAM to at least {estimated_ram * 1.2:.0f}GB")
-            else:
-                recommendations.append("Close applications to free up RAM")
-        
-        elif estimated_ram > available_ram * 0.9:
-            performance_tier = "moderate"
-            warnings.append(f"High RAM usage: {estimated_ram:.1f}GB needed, {available_ram:.1f}GB available")
-            recommendations.append("Consider closing other applications")
-        
-        elif estimated_ram > available_ram * 0.7:
-            performance_tier = "good"
-            warnings.append("Moderate RAM usage expected")
-        
-        # GPU acceleration assessment
-        if has_gpu:
-            best_gpu = max(system_info["gpu_info"], key=lambda g: g["total_memory_gb"])
-            gpu_memory = best_gpu["total_memory_gb"]
-            
-            if estimated_vram <= gpu_memory * self.config.gpu_memory_fraction:
-                reasons.append(f"GPU acceleration available ({best_gpu['vendor']} {best_gpu['name']})")
-                if performance_tier == "excellent":
-                    performance_tier = "excellent"
-            else:
-                warnings.append(f"Limited GPU memory: {estimated_vram:.1f}GB needed, {gpu_memory:.1f}GB available")
-                recommendations.append("Model may fall back to CPU processing")
-                if performance_tier in ["excellent", "good"]:
-                    performance_tier = "good"
-        else:
-            if self.config.enable_cpu_fallback:
-                warnings.append("No GPU detected - CPU-only processing")
-                reasons.append("CPU processing supported")
-                if performance_tier == "excellent":
-                    performance_tier = "good"
-            else:
-                compatible = False
-                reasons.append("GPU required but not available")
-                recommendations.append("Install GPU drivers or enable CPU fallback")
-        
-        # Performance predictions based on model size
-        if estimated_ram <= 4:
-            reasons.append("Fast inference expected")
-        elif estimated_ram <= 8:
-            reasons.append("Good inference speed expected")
-        elif estimated_ram <= 16:
-            warnings.append("Moderate inference speed expected")
-        else:
-            warnings.append("Slow inference expected due to large model size")
-            if performance_tier not in ["poor"]:
-                performance_tier = "moderate"
-        
-        # Memory threshold check
-        if available_ram < self.config.memory_threshold_gb:
-            warnings.append(f"System RAM below recommended threshold ({self.config.memory_threshold_gb}GB)")
-            recommendations.append("Close unnecessary applications or upgrade RAM")
-        
-        return ModelCompatibility(
-            model_name=model_name,
-            compatible=compatible,
-            estimated_ram_gb=estimated_ram,
-            estimated_vram_gb=estimated_vram,
-            performance_tier=performance_tier,
-            reasons=reasons,
-            warnings=warnings,
-            recommendations=recommendations
-        )
 
 
 # Export main classes
@@ -751,6 +537,5 @@ __all__ = [
     "CrossPlatformGPUDetector",
     "SystemInfo",
     "GPUInfo",
-    "ModelCompatibility",
     "GPUVendor"
 ]
