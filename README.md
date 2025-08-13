@@ -194,16 +194,21 @@ Triggers:
 ### **Project Structure**
 ```
 ollama-mcp-server/
-├── src/ollama_mcp/
-│   ├── server.py              # Main MCP server implementation
-│   ├── client.py              # Ollama client interface
-│   ├── tools/
-│   │   ├── base_tools.py      # Essential tools
-│   │   └── advanced_tools.py  # Extended tools
-│   ├── config.py              # Configuration management
-│   ├── model_manager.py       # Model operations
-│   └── hardware_checker.py    # System analysis
-└── pyproject.toml            # Project configuration
+├── src/
+│   ├── __init__.py               # Defines the package version
+│   └── ollama_mcp/
+│       ├── __init__.py           # Makes 'ollama_mcp' a package
+│       ├── server.py             # Main MCP server implementation
+│       ├── client.py             # Ollama API client
+│       ├── config.py             # Configuration management
+│       ├── model_manager.py      # Local model operations
+│       ├── hardware_checker.py   # System hardware analysis
+│       └── ... (and other modules)
+├── tests/
+│   ├── test_client.py            # Unit tests for the client
+│   └── test_tools.py             # Integration tests for tools
+├── .gitignore                    # Specifies intentionally untracked files
+└── pyproject.toml                # Project configuration and dependencies
 ```
 
 ### **Key Technical Achievements**
