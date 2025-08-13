@@ -354,10 +354,29 @@ async def _handle_test_model_responsiveness(arguments: Dict[str, Any], client: O
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
+CONCEPT_KEYWORDS = {
+    "coding": {"code", "coding", "develop", "development", "sviluppo", "programmazione", "script", "coder", "codellama", "devstral"},
+    "writing": {"write", "writing", "scrivere", "creative", "storia", "racconto", "article", "articolo", "creativewriting"},
+    "chat": {"chat", "conversation", "conversazione", "general", "generale", "assistant", "assistente", "llama3"},
+    "vision": {"vision", "image", "multimodal", "immagine", "vedere", "bakllava", "llava"},
+    "medical": {"medical", "medicine", "medicina", "medico", "medgemma", "meditron", "medllama"},
+    "reasoning": {"reasoning", "logic", "ragionamento", "logica", "deepseek-r1"},
+}
+
 def _analyze_local_models(user_needs: str, model_details: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Analyze local models based on user needs and return ranked recommendations."""
+    """Analyze local models based on user needs and return ranked recommendations using concept matching."""
     user_keywords = set(user_needs.lower().split())
     
+    # Identify concepts from user's request
+    requested_concepts = set()
+    for concept, keywords in CONCEPT_KEYWORDS.items():
+        if not user_keywords.isdisjoint(keywords):
+            requested_concepts.add(concept)
+
+    # If no specific concept is found, assume general chat
+    if not requested_concepts:
+        requested_concepts.add("chat")
+
     scored_models = []
     for details in model_details:
         score = 0
@@ -365,27 +384,24 @@ def _analyze_local_models(user_needs: str, model_details: List[Dict[str, Any]]) 
 
         model_name = details.get("name", "")
 
-        # Combine all text data from the model details for keyword searching
+        # Build searchable text from model info
         searchable_text = model_name.lower()
         searchable_text += details.get("modelfile", "").lower()
         searchable_text += json.dumps(details.get("details", {})).lower()
 
-        # Score based on keyword matches
-        for keyword in user_keywords:
-            if keyword in searchable_text:
-                score += 10
-                reasons.append(f"Matches keyword '{keyword}'")
-
-        # Boost score for models that are explicitly for coding if user needs it
-        if ("code" in user_keywords or "programming" in user_keywords) and "cod" in model_name.lower():
-            score += 20
-            reasons.append("Model name suggests it is specialized for coding.")
+        # Score model based on how well it matches the requested concepts
+        for concept in requested_concepts:
+            for keyword in CONCEPT_KEYWORDS[concept]:
+                if keyword in searchable_text:
+                    score += 10
+                    reasons.append(f"Suitable for '{concept}' (matched keyword: '{keyword}')")
+                    break # Only score once per concept
 
         if score > 0:
             scored_models.append({
                 "name": model_name,
                 "score": score,
-                "reasons": reasons,
+                "reasons": sorted(list(set(reasons))), # Unique reasons
                 "family": details.get("details", {}).get("family"),
                 "parameter_size": details.get("details", {}).get("parameter_size"),
             })

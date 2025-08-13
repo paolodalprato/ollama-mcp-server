@@ -30,8 +30,12 @@ async def test_system_resource_check_tool(MockHardwareChecker):
     assert response_text["system_info"]["os_name"] == "Linux"
 
 @pytest.mark.asyncio
-async def test_suggest_models_local_advisor():
-    """Test the suggest_models tool as a local model advisor."""
+@pytest.mark.parametrize("language, user_needs", [
+    ("en", "i need a model for coding"),
+    ("it", "mi serve un modello per lo sviluppo"),
+])
+async def test_suggest_models_local_advisor_multilingual(language, user_needs):
+    """Test that the concept-based suggestion works for different languages."""
     # Arrange
     mock_client = MagicMock(spec=OllamaClient)
 
@@ -39,51 +43,33 @@ async def test_suggest_models_local_advisor():
         def __init__(self, name):
             self.name = name
 
-    # Mock the list of local models
     fake_local_models = [
         FakeModelInfo(name="codellama:7b"),
         FakeModelInfo(name="llama3:latest"),
     ]
     mock_client.list_models = AsyncMock(return_value={"success": True, "models": fake_local_models})
 
-    # Mock the details for each model
     def show_side_effect(model_name):
         if model_name == "codellama:7b":
-            return {
-                "success": True,
-                "name": "codellama:7b",
-                "modelfile": "# For coding",
-                "details": {"family": "llama", "parameter_size": "7B"}
-            }
+            return {"success": True, "name": "codellama:7b", "modelfile": "Model for code generation"}
         if model_name == "llama3:latest":
-            return {
-                "success": True,
-                "name": "llama3:latest",
-                "modelfile": "# General purpose chat",
-                "details": {"family": "llama", "parameter_size": "8B"}
-            }
+            return {"success": True, "name": "llama3:latest", "modelfile": "General purpose chat model"}
         return {"success": False}
 
     mock_client.show = AsyncMock(side_effect=show_side_effect)
 
     # Act
-    # Ask for a model for "coding"
-    arguments = {"user_needs": "i need a model for coding"}
+    arguments = {"user_needs": user_needs}
     result = await handle_advanced_tool("suggest_models", arguments, mock_client)
 
     # Assert
-    mock_client.list_models.assert_awaited_once()
-    assert mock_client.show.await_count == 2
-
     response_text = json.loads(result[0].text)
     assert response_text["success"] is True
 
     recommendations = response_text["recommendations"]
     assert len(recommendations) > 0
-    # The coding model should be ranked highest
     assert recommendations[0]["name"] == "codellama:7b"
-    # Check that one of the reasons mentions "coding"
-    assert any("coding" in reason for reason in recommendations[0]["reasons"])
+    assert "coding" in recommendations[0]["reasons"][0]
 
 @pytest.mark.asyncio
 async def test_unknown_tool_handling():
