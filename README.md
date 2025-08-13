@@ -351,8 +351,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Changelog
 
-*   **August 2025:** Project refactoring and enhancement by Jules. Overhauled the architecture for modularity, implemented a fully asynchronous client, added a test suite, and refined the tool logic based on a "local-first" philosophy.
-*   **July 2025:** Initial version created by Paolo Dalprato.
+*   **August 2025:** Project refactoring and enhancement. Overhauled the architecture for modularity, implemented a fully asynchronous client, added a test suite, and refined the tool logic based on a "local-first" philosophy.
+*   **July 2025:** Initial version.
 
 ---
 
