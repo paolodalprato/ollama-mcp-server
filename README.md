@@ -4,7 +4,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 
-A self-contained **Model Context Protocol (MCP) server** for local Ollama management. Features include listing local models, chatting, starting/stopping the server, and a 'local model advisor' to suggest the best local model for a given task. The server is designed to be a robust, dependency-free, and cross-platform tool for managing a local Ollama instance.
+A self-contained **Model Context Protocol (MCP) server** for local Ollama management, developed with Claude AI assistance. Features include listing local models, chatting, starting/stopping the server, and a 'local model advisor' to suggest the best local model for a given task. The server is designed to be a robust, dependency-free, and cross-platform tool for managing a local Ollama instance.
 
 ## ⚠️ Current Testing Status
 
@@ -333,7 +333,7 @@ I built this MCP server to streamline my own workflow, and then refined it into 
 ### **Design Philosophy**
 I initially developed this for my personal use to manage Ollama models more efficiently. When the MCP protocol became available, I transformed my personal tool into an MCP server to share it with others who might find it useful.
 
-**Development Approach**: This project was developed using "vibe coding" with Claude - an iterative, conversational development process where AI assistance helped refine both the technical implementation and user experience. It's a practical example of AI-assisted development creating tools for AI management.
+**Development Approach**: This project was developed with Claude using "vibe coding" - an iterative, conversational development process where AI assistance helped refine both the technical implementation and user experience. It's a practical example of AI-assisted development creating tools for AI management.
 
 ## 📄 License
 
@@ -356,9 +356,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Changelog
 
-*   **v0.9.0 (August 17, 2025):** Critical bugfix release - Fixed datetime serialization issue that prevented model listing from working with Claude Desktop. All tools now verified working correctly.
-*   **August 2025:** Project refactoring and enhancement by Jules. Overhauled the architecture for modularity, implemented a fully asynchronous client, added a test suite, and refined the tool logic based on a "local-first" philosophy.
-*   **July 2025:** Initial version created by Paolo Dalprato.
+*   **v0.9.0 (August 17, 2025):** Critical bugfix release - Fixed datetime serialization issue that prevented model listing from working with Claude Desktop. All 9 tools now verified working correctly.
+*   **August 2025:** Project refactoring and enhancements. Overhauled the architecture for modularity, implemented a fully asynchronous client, added a test suite, and refined the tool logic based on a "local-first" philosophy.
+*   **July 2025:** Initial version created by Paolo Dalprato with Claude AI assistance.
 
 For detailed changes, see [CHANGELOG.md](CHANGELOG.md).
 

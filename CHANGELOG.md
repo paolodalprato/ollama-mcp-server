@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Testing
 - Comprehensive test suite run on Windows 11 with RTX 4090
-- All 8 tools verified working correctly:
+- All 9 tools verified working correctly:
   - ✅ list_local_models
   - ✅ local_llm_chat  
   - ✅ ollama_health_check
@@ -35,11 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Previous Versions]
 
 ### [0.8.x] - July-August 2025
-- Initial development and architecture setup
+- Initial development and architecture setup with Claude AI assistance
 - Implementation of core MCP tools
 - Cross-platform compatibility framework
 - GPU detection and system analysis features
 
 ### [Initial Release] - July 2025
-- First version by Paolo Dalprato
+- First version by Paolo Dalprato developed with Claude
 - Basic Ollama integration and model management
