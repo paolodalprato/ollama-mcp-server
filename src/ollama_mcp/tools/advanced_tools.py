@@ -16,11 +16,20 @@ import json
 import subprocess
 import asyncio
 import time
+from datetime import datetime
 from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
 
 from ollama_mcp.client import OllamaClient
 from ollama_mcp.model_manager import ModelManager
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """JSON encoder that handles datetime objects by converting them to ISO format strings"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 def get_advanced_tools() -> List[Tool]:
@@ -135,13 +144,13 @@ async def _handle_suggest_models(arguments: Dict[str, Any], client: OllamaClient
             "success": False,
             "error": "No local models found.",
             "suggestion": "Download a model first using the 'download_model' tool."
-        }, indent=2))]
+        }, cls=DateTimeEncoder, indent=2))]
     
     # 2. Get details for each local model
     local_models = local_models_result["models"]
     model_details = []
     for model in local_models:
-        details = await client.show(model.name)
+        details = await client.show(model["name"])
         if details.get("success"):
             model_details.append(details)
 
@@ -149,7 +158,7 @@ async def _handle_suggest_models(arguments: Dict[str, Any], client: OllamaClient
         return [TextContent(type="text", text=json.dumps({
             "success": False,
             "error": "Could not retrieve details for any local models."
-        }, indent=2))]
+        }, cls=DateTimeEncoder, indent=2))]
 
     # 3. Analyze and rank models
     recommendations = _analyze_local_models(user_needs, model_details)
@@ -164,7 +173,7 @@ async def _handle_suggest_models(arguments: Dict[str, Any], client: OllamaClient
         }
     }
     
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    return [TextContent(type="text", text=json.dumps(result, cls=DateTimeEncoder, indent=2))]
 
 
 
@@ -180,13 +189,13 @@ async def _handle_remove_model(arguments: Dict[str, Any], client: OllamaClient) 
             text=json.dumps({
                 "success": False,
                 "error": "Model name is required"
-            }, indent=2)
+            }, cls=DateTimeEncoder, indent=2)
         )]
     
     model_manager = ModelManager(client)
     result = await model_manager.remove_model(model_name, force=force)
     
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    return [TextContent(type="text", text=json.dumps(result, cls=DateTimeEncoder, indent=2))]
 
 
 
@@ -198,7 +207,7 @@ async def _handle_start_server(client: OllamaClient) -> List[TextContent]:
     controller = OllamaServerController(host=client.host)
     result = await controller.start_server()
     
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    return [TextContent(type="text", text=json.dumps(result, cls=DateTimeEncoder, indent=2))]
 
 
 async def _handle_select_chat_model(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
@@ -211,7 +220,7 @@ async def _handle_select_chat_model(arguments: Dict[str, Any], client: OllamaCli
             text=json.dumps({
                 "success": False,
                 "error": "Message is required"
-            }, indent=2)
+            }, cls=DateTimeEncoder, indent=2)
         )]
     
     # Get available models
@@ -228,7 +237,7 @@ async def _handle_select_chat_model(arguments: Dict[str, Any], client: OllamaCli
                     "download_model": "Download a model first using 'download_model'",
                     "suggestions": "Try 'suggest_models' to see recommended models"
                 }
-            }, indent=2)
+            }, cls=DateTimeEncoder, indent=2)
         )]
     
     # Present model selection with details
@@ -236,9 +245,9 @@ async def _handle_select_chat_model(arguments: Dict[str, Any], client: OllamaCli
     for i, model in enumerate(models_result["models"], 1):
         model_options.append({
             "index": i,
-            "name": model.name,
-            "size": model.size_human,
-            "modified": model.modified
+            "name": model["name"],
+            "size": model["size_human"],
+            "modified": model["modified_display"]
         })
     
     result = {
@@ -249,21 +258,21 @@ async def _handle_select_chat_model(arguments: Dict[str, Any], client: OllamaCli
         "instructions": "Respond with the model name you want to use, then I'll send your message to that model"
     }
     
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    return [TextContent(type="text", text=json.dumps(result, cls=DateTimeEncoder, indent=2))]
 
 
 async def _handle_test_model_responsiveness(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
     """Handle testing a model's responsiveness."""
     model_name = arguments.get("model_name")
     if not model_name:
-        return [TextContent(type="text", text=json.dumps({"success": False, "error": "model_name is a required argument."}, indent=2))]
+        return [TextContent(type="text", text=json.dumps({"success": False, "error": "model_name is a required argument."}, cls=DateTimeEncoder, indent=2))]
 
     model_manager = ModelManager(client)
     # The responsiveness test is a private method, but we can call it here for the tool.
     # A cleaner refactor could make it a public method if desired.
     result = await model_manager._test_model_responsiveness(model_name)
     
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    return [TextContent(type="text", text=json.dumps(result, cls=DateTimeEncoder, indent=2))]
 
 
 CONCEPT_KEYWORDS = {
@@ -299,7 +308,7 @@ def _analyze_local_models(user_needs: str, model_details: List[Dict[str, Any]]) 
         # Build searchable text from model info
         searchable_text = model_name.lower()
         searchable_text += details.get("modelfile", "").lower()
-        searchable_text += json.dumps(details.get("details", {})).lower()
+        searchable_text += json.dumps(details.get("details", {}), cls=DateTimeEncoder).lower()
 
         # Score model based on how well it matches the requested concepts
         for concept in requested_concepts:

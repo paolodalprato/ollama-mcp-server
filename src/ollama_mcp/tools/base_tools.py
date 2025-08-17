@@ -18,10 +18,19 @@ v0.9.3 improvements:
 
 import json
 import psutil
+from datetime import datetime
 from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
 
 from ollama_mcp.client import OllamaClient
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """JSON encoder that handles datetime objects by converting them to ISO format strings"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 def get_base_tools() -> List[Tool]:
@@ -98,50 +107,41 @@ async def handle_base_tool(name: str, arguments: Dict[str, Any], client: OllamaC
 
 
 async def _handle_list_models(client: OllamaClient) -> List[TextContent]:
-    """Handle list models with helpful diagnostics"""
+    """Handle list models - Bridge compatible text formatting approach"""
     result = await client.list_models()
     
     if result["success"]:
         if result["models"]:
-            # Format model list nicely
-            model_info = {
-                "success": True,
-                "models": [
-                    {
-                        "name": model.name,
-                        "size": model.size_human,
-                        "modified": model.modified
-                    }
-                    for model in result["models"]
-                ],
-                "total_count": result["count"],
-                "usage_tip": "Use 'local_llm_chat' tool to chat with any of these models"
-            }
+            # Use bridge approach: format as text, not JSON
+            response = "[MODELLI] LLM Locali Disponibili\n\n"
+            
+            for model in result["models"]:
+                size_gb = model["size"] / (1024**3) if model["size"] > 0 else 0
+                response += f"- {model['name']}\n"
+                response += f"  Dimensione: {size_gb:.1f} GB\n"
+                response += f"  Aggiornato: {model['modified_display']}\n\n"
+            
+            response += f"[TOTALE] Modelli disponibili: {result['count']}\n"
+            response += "[PRIVACY] Tutti i modelli vengono eseguiti localmente, nessun dato inviato al cloud"
+            
         else:
-            model_info = {
-                "success": True,
-                "models": [],
-                "total_count": 0,
-                "message": "No models found locally",
-                "next_steps": {
-                    "download_model": "Download a model first: 'ollama pull llama3.2'",
-                    "popular_models": ["llama3.2", "qwen2.5", "phi3.5", "mistral"]
-                }
-            }
+            response = "[ERROR] Nessun modello Ollama trovato.\n\n"
+            response += "Possibili soluzioni:\n"
+            response += "1. Scarica un modello: ollama pull llama3.2\n"
+            response += "2. Verifica Ollama: ollama list\n"
+            response += "3. Modelli popolari: llama3.2, qwen2.5, phi3.5, mistral"
     else:
         # Ollama not accessible - provide helpful guidance
-        model_info = {
-            "success": False,
-            "error": result["error"],
-            "models": [],
-            "troubleshooting": {
-                "check_server": "Use 'ollama_health_check' for detailed diagnosis",
-                "start_ollama": "Try running: 'ollama serve' in terminal",
-                "install_ollama": "Download from: https://ollama.com"
-            }
-        }
+        response = "[ERROR] Ollama Server non accessibile\n\n"
+        response += f"Errore: {result['error']}\n\n"
+        response += "Soluzioni:\n"
+        response += "1. Verifica installazione: https://ollama.com\n"
+        response += "2. Avvia server: ollama serve\n"
+        response += "3. Controlla porta 11434\n"
+        response += "4. Usa 'ollama_health_check' per diagnostica"
     
-    return [TextContent(type="text", text=json.dumps(model_info, indent=2))]
+    # Return plain text like the bridge, NO JSON serialization
+    return [TextContent(type="text", text=response)]
 
 
 async def _handle_chat(arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
@@ -157,14 +157,14 @@ async def _handle_chat(arguments: Dict[str, Any], client: OllamaClient) -> List[
                 "success": False,
                 "error": "Message is required",
                 "example": "Use: local_llm_chat with message='Hello, how are you?'"
-            }, indent=2)
+            }, cls=DateTimeEncoder, indent=2)
         )]
     
     # Auto-select model if not specified
     if not model:
         models_result = await client.list_models()
         if models_result["success"] and models_result["models"]:
-            model = models_result["models"][0].name
+            model = str(models_result["models"][0]["name"])  # Access dict key, not object attr
         else:
             return [TextContent(
                 type="text", 
@@ -176,7 +176,7 @@ async def _handle_chat(arguments: Dict[str, Any], client: OllamaClient) -> List[
                         "download_model": "Download a model: 'ollama pull llama3.2'",
                         "check_server": "Verify Ollama is running: 'ollama_health_check'"
                     }
-                }, indent=2)
+                }, cls=DateTimeEncoder, indent=2)
             )]
     
     # Generate response
@@ -204,7 +204,7 @@ async def _handle_chat(arguments: Dict[str, Any], client: OllamaClient) -> List[
             }
         }
     
-    return [TextContent(type="text", text=json.dumps(chat_result, indent=2))]
+    return [TextContent(type="text", text=json.dumps(chat_result, cls=DateTimeEncoder, indent=2))]
 
 
 async def _handle_health_check(client: OllamaClient) -> List[TextContent]:
@@ -240,7 +240,7 @@ async def _handle_health_check(client: OllamaClient) -> List[TextContent]:
             }
         }
     
-    return [TextContent(type="text", text=json.dumps(health_result, indent=2))]
+    return [TextContent(type="text", text=json.dumps(health_result, cls=DateTimeEncoder, indent=2))]
 
 
 async def _handle_system_check() -> List[TextContent]:
@@ -250,4 +250,4 @@ async def _handle_system_check() -> List[TextContent]:
     checker = HardwareChecker()
     system_info = await checker.get_system_info()
     
-    return [TextContent(type="text", text=json.dumps(system_info, indent=2))]
+    return [TextContent(type="text", text=json.dumps(system_info, cls=DateTimeEncoder, indent=2))]

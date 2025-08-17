@@ -7,16 +7,65 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from datetime import datetime
 import ollama
 
 logger = logging.getLogger(__name__)
 
+
+def _format_datetime_safe(dt_value):
+    """Convert datetime objects to string format safely using ISO format."""
+    if isinstance(dt_value, datetime):
+        return dt_value.isoformat()
+    elif isinstance(dt_value, dict):
+        # Recursively clean datetime objects in dictionaries
+        clean_dict = {}
+        for k, v in dt_value.items():
+            clean_dict[k] = _format_datetime_safe(v)
+        return clean_dict
+    elif isinstance(dt_value, list):
+        # Recursively clean datetime objects in lists
+        return [_format_datetime_safe(item) for item in dt_value]
+    else:
+        return dt_value
+
+
+def _format_date_display(date_str: str) -> str:
+    """Format date string to readable format, following claude-ollama-bridge approach."""
+    try:
+        if not date_str:
+            return "Unknown"
+        
+        # Simple date formatting - keep first part of ISO date
+        if 'T' in date_str:
+            date_part = date_str.split('T')[0]
+            time_part = date_str.split('T')[1][:5]
+            return f"{date_part} {time_part}"
+        
+        return date_str[:18]
+        
+    except:
+        return "Unknown"
+
+
 @dataclass
 class ModelInfo:
-    """Basic model information"""
+    """Basic model information, following claude-ollama-bridge approach"""
     name: str
     size: int
-    modified: str
+    digest: str
+    modified_at: str  # ← KEY: stored as STRING, not datetime object
+    details: Optional[Dict[str, Any]] = None
+    
+    @property
+    def modified_display(self) -> str:
+        """Format date for display"""
+        return _format_date_display(self.modified_at)
+    
+    @property 
+    def modified(self) -> str:
+        """Backward compatibility property"""
+        return self.modified_at
     
     @property
     def size_human(self) -> str:
@@ -92,16 +141,32 @@ class OllamaClient:
         
         try:
             response = await self.client.list()
-            raw_models = response.get('models', [])
             
-            models = [
-                ModelInfo(
-                    name=model.get('name', 'unknown'),
-                    size=model.get('size', 0),
-                    modified=model.get('modified_at', 'unknown')
+            models = []
+            for model_obj in response.models:
+                # Convert pydantic model to dict, following claude-ollama-bridge approach
+                model_data = model_obj.model_dump()
+                
+                # Create ModelInfo for compatibility but convert to dict for JSON serialization
+                model_info = ModelInfo(
+                    name=model_data.get("model", "unknown"),  # ← KEY: field is "model" not "name"
+                    size=model_data.get("size", 0),
+                    digest=model_data.get("digest", ""),
+                    modified_at=_format_datetime_safe(model_data.get("modified_at", "unknown")),  # ← Convert datetime BEFORE ModelInfo creation
+                    details=model_data.get("details")
                 )
-                for model in raw_models
-            ]
+                
+                # Convert to plain dict for JSON serialization 
+                model_dict = {
+                    "name": model_info.name,
+                    "size": model_info.size,
+                    "digest": model_info.digest,
+                    "modified_at": model_info.modified_at,
+                    "modified_display": model_info.modified_display,
+                    "size_human": model_info.size_human,
+                    "details": model_info.details
+                }
+                models.append(model_dict)
             
             return {"success": True, "models": models, "count": len(models)}
             
@@ -109,7 +174,7 @@ class OllamaClient:
             return {"success": False, "error": "Timeout listing models", "models": []}
         except Exception as e:
             return {"success": False, "error": str(e), "models": []}
-
+    
     async def show(self, model_name: str) -> Dict[str, Any]:
         """Get details about a model asynchronously."""
         if not self._ensure_client() or not self.client:
@@ -117,9 +182,17 @@ class OllamaClient:
 
         try:
             response = await self.client.show(model_name)
-            response["success"] = True
-            response["name"] = model_name # The show command doesn't return the name, so we add it.
-            return response
+            # Convert pydantic response to dict and sanitize datetime objects
+            response_dict = response.model_dump()
+            response_dict["success"] = True
+            response_dict["name"] = model_name # The show command doesn't return the name, so we add it.
+            
+            # Convert any datetime objects to strings following claude-ollama-bridge approach
+            for key, value in response_dict.items():
+                if isinstance(value, datetime):
+                    response_dict[key] = value.isoformat()
+            
+            return response_dict
         except ollama.ResponseError as e:
             if e.status_code == 404:
                 return {"success": False, "error": f"Model '{model_name}' not found."}

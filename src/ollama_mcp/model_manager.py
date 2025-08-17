@@ -16,7 +16,7 @@ import time
 from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass
 
-from .client import OllamaClient, ModelInfo
+from .client import OllamaClient
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +60,11 @@ class ModelManager:
             # Format models for output
             formatted_models = [
                 {
-                    "name": model.name,
-                    "size_bytes": model.size,
-                    "size_human": model.size_human,
-                    "modified": model.modified,
-                    "is_default": model.name == self.default_model
+                    "name": model["name"],
+                    "size_bytes": model["size"],
+                    "size_human": model["size_human"],
+                    "modified": model["modified"],
+                    "is_default": model["name"] == self.default_model
                 }
                 for model in models_result["models"]
             ]
@@ -134,7 +134,7 @@ class ModelManager:
                     "model_name": model_name
                 }
             
-            model_exists = any(m.name == model_name for m in models_result["models"])
+            model_exists = any(m["name"] == model_name for m in models_result["models"])
             
             if not model_exists:
                 return {
@@ -153,8 +153,8 @@ class ModelManager:
                 }
             
             # Get model size before removal
-            model_info = next((m for m in models_result["models"] if m.name == model_name), None)
-            model_size_mb = (model_info.size / (1024 * 1024)) if model_info else 0
+            model_info = next((m for m in models_result["models"] if m["name"] == model_name), None)
+            model_size_mb = (model_info["size"] / (1024 * 1024)) if model_info else 0
             
             # Remove the model
             result = await self.client.remove_model(model_name)
@@ -214,7 +214,7 @@ class ModelManager:
                     "model_name": model_name
                 }
             
-            model_exists = any(m.name == model_name for m in models_result["models"])
+            model_exists = any(m["name"] == model_name for m in models_result["models"])
             
             if not model_exists:
                 return {

@@ -3,9 +3,10 @@ README.md
 pyproject.toml
 src/ollama_mcp/__init__.py
 src/ollama_mcp/client.py
+src/ollama_mcp/client_bridge.py
 src/ollama_mcp/config.py
 src/ollama_mcp/hardware_checker.py
-src/ollama_mcp/job_manager.py
+src/ollama_mcp/minimal_server.py
 src/ollama_mcp/model_manager.py
 src/ollama_mcp/ollama_server_control.py
 src/ollama_mcp/server.py
@@ -19,3 +20,5 @@ src/ollama_mcp_server.egg-info/dependency_links.txt
 src/ollama_mcp_server.egg-info/entry_points.txt
 src/ollama_mcp_server.egg-info/requires.txt
 src/ollama_mcp_server.egg-info/top_level.txt
+tests/test_client.py
+tests/test_tools.py

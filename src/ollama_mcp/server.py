@@ -12,8 +12,10 @@ Key Features:
 """
 
 import asyncio
+import json
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -27,6 +29,9 @@ from ollama_mcp.tools.base_tools import get_base_tools, handle_base_tool
 from ollama_mcp.tools.advanced_tools import get_advanced_tools, handle_advanced_tool
 
 logger = logging.getLogger(__name__)
+
+
+# REMOVED: Global JSON encoder monkey patch - this was causing the datetime serialization bug!
 
 
 class OllamaMCPServer:

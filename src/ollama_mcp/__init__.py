@@ -14,7 +14,7 @@ __author__ = "Paolo Dalprato"
 __email__ = "paolo@paolodalprato.com"
 __license__ = "MIT"
 
-from .client import OllamaClient
+from .client import OllamaClient  # Use fixed client.py version
 from .server_manager import OllamaServerManager
 from .model_manager import ModelManager
 from .hardware_checker import HardwareChecker

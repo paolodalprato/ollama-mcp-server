@@ -356,8 +356,11 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Changelog
 
+*   **v0.9.0 (August 17, 2025):** Critical bugfix release - Fixed datetime serialization issue that prevented model listing from working with Claude Desktop. All tools now verified working correctly.
 *   **August 2025:** Project refactoring and enhancement by Jules. Overhauled the architecture for modularity, implemented a fully asynchronous client, added a test suite, and refined the tool logic based on a "local-first" philosophy.
 *   **July 2025:** Initial version created by Paolo Dalprato.
+
+For detailed changes, see [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
