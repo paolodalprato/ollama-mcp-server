@@ -1,2 +1,0 @@
-[console_scripts]
-ollama-mcp-server = ollama_mcp.server:main
