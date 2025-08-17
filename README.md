@@ -343,8 +343,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **Ollama Team**: For the excellent local AI platform
 - **MCP Project**: For the Model Context Protocol specification
-- **Claude Desktop**: For MCP client implementation and testing platform
-- **Community**: For testing, feedback, and contributions
+- **Claude Desktop/Code by Anthropic**: As tool in MCP client implementation, testing and refactoring
+- **Jules by Google**: As tool in refactoring
 
 ## 📞 Support
 
