@@ -1,0 +1,15 @@
+# .mailmap file to correctly attribute commits
+# Maps commit authors to the correct legal contributor
+
+# Map Claude bot commits to Paolo Dalprato (as Claude assisted development)
+Paolo Dalprato <paolo@paolodalprato.com> claude <claude@anthropic.com>
+Paolo Dalprato <paolo@paolodalprato.com> Claude <claude@anthropic.com>
+
+# Map Jules bot commits to Paolo Dalprato (as Jules cannot be legal contributor)
+Paolo Dalprato <paolo@paolodalprato.com> google-labs-jules[bot] <161369871+google-labs-jules[bot]@users.noreply.github.com>
+Paolo Dalprato <paolo@paolodalprato.com> Jules <jules@google.com>
+
+# Ensure Paolo Dalprato is correctly attributed
+Paolo Dalprato <paolo@paolodalprato.com> Paolo Dalprato <paolo@paolodalprato.com>
+Paolo Dalprato <paolo@paolodalprato.com> paolodalprato <paolo@paolodalprato.com>
+Paolo Dalprato <paolo@paolodalprato.com> paolodalprato <42892131+paolodalprato@users.noreply.github.com>
