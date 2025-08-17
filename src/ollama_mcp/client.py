@@ -7,6 +7,7 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from datetime import datetime
 import ollama
 
 logger = logging.getLogger(__name__)
@@ -94,15 +95,20 @@ class OllamaClient:
             response = await self.client.list()
             raw_models = response.get('models', [])
             
-            models = [
-                ModelInfo(
+            models = []
+            for model in raw_models:
+                modified_at = model.get('modified_at')
+                if modified_at and hasattr(modified_at, 'isoformat'):
+                    modified_str = modified_at.isoformat()
+                else:
+                    modified_str = str(modified_at) if modified_at is not None else 'unknown'
+
+                models.append(ModelInfo(
                     name=model.get('name', 'unknown'),
                     size=model.get('size', 0),
-                    modified=model.get('modified_at', 'unknown')
-                )
-                for model in raw_models
-            ]
-            
+                    modified=modified_str
+                ))
+
             return {"success": True, "models": models, "count": len(models)}
             
         except asyncio.TimeoutError:
