@@ -333,7 +333,7 @@ I built this MCP server to streamline my own workflow, and then refined it into 
 ### **Design Philosophy**
 I initially developed this for my personal use to manage Ollama models more efficiently. When the MCP protocol became available, I transformed my personal tool into an MCP server to share it with others who might find it useful.
 
-**Development Approach**: This project was developed with Claude using "vibe coding" - an iterative, conversational development process where AI assistance helped refine both the technical implementation and user experience. It's a practical example of AI-assisted development creating tools for AI management.Jules was also involved in the final refactoring phase.
+**Development Approach**: This project was developed with Claude using "vibe coding" - an iterative, conversational development process where AI assistance helped refine both the technical implementation and user experience. It's a practical example of AI-assisted development creating tools for AI management. Jules was also involved in the final refactoring phase.
 
 ## 📄 License
 
