@@ -333,7 +333,7 @@ I built this MCP server to streamline my own workflow, and then refined it into 
 ### **Design Philosophy**
 I initially developed this for my personal use to manage Ollama models more efficiently. When the MCP protocol became available, I transformed my personal tool into an MCP server to share it with others who might find it useful.
 
-**Development Approach**: This project was developed with Claude using "vibe coding" - an iterative, conversational development process where AI assistance helped refine both the technical implementation and user experience. It's a practical example of AI-assisted development creating tools for AI management.
+**Development Approach**: This project was developed with Claude using "vibe coding" - an iterative, conversational development process where AI assistance helped refine both the technical implementation and user experience. It's a practical example of AI-assisted development creating tools for AI management.Jules was also involved in the final refactoring phase.
 
 ## 📄 License
 
@@ -343,8 +343,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **Ollama Team**: For the excellent local AI platform
 - **MCP Project**: For the Model Context Protocol specification
-- **Claude Desktop**: For MCP client implementation and testing platform
-- **Community**: For testing, feedback, and contributions
+- **Claude Desktop/Code by Anthropic**: As tool in MCP client implementation, testing and refactoring
+- **Jules by Google**: As tool in refactoring
 
 ## 📞 Support
 
