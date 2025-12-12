@@ -69,6 +69,10 @@ Add to your MCP client configuration (e.g., Claude Desktop `config.json`):
 - **Ollama installed** and accessible in PATH
 - **MCP-compatible client** (Claude Desktop, etc.)
 
+### Ollama Configuration Compatibility
+
+This MCP server automatically respects your Ollama configuration. If you have customized your Ollama setup (e.g., changed the models folder via `OLLAMA_MODELS` environment variable), the MCP server will work seamlessly without any additional configuration.
+
 ## 🛠️ Available Tools
 
 ### **Model Management**
