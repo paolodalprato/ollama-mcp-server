@@ -1,7 +1,7 @@
 # Ollama MCP Server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 
 A self-contained **Model Context Protocol (MCP) server** for local Ollama management, developed with Claude AI assistance. Features include listing local models, chatting, starting/stopping the server, and a 'local model advisor' to suggest the best local model for a given task. The server is designed to be a robust, dependency-free, and cross-platform tool for managing a local Ollama instance.
@@ -65,7 +65,7 @@ Add to your MCP client configuration (e.g., Claude Desktop `config.json`):
 
 ### Requirements
 
-- **Python 3.8+**
+- **Python 3.10+** (required by MCP SDK dependency)
 - **Ollama installed** and accessible in PATH
 - **MCP-compatible client** (Claude Desktop, etc.)
 

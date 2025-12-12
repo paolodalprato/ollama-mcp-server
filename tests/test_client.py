@@ -17,7 +17,19 @@ async def test_health_check_healthy(mock_async_client, client):
     # Arrange
     mock_instance = mock_async_client.return_value
     mock_instance.ps = AsyncMock()
-    mock_instance.list = AsyncMock(return_value={'models': [{'name': 'test-model'}]})
+
+    # Create a mock model object that mimics the ollama library response
+    mock_model = MagicMock()
+    mock_model.model_dump.return_value = {
+        'model': 'test-model',
+        'size': 1000,
+        'digest': 'abc123',
+        'modified_at': '2024-01-01T00:00:00Z'
+    }
+
+    mock_list_response = MagicMock()
+    mock_list_response.models = [mock_model]
+    mock_instance.list = AsyncMock(return_value=mock_list_response)
 
     # Act
     health = await client.health_check()
@@ -49,13 +61,27 @@ async def test_list_models_success(mock_async_client, client):
     """Test successfully listing models."""
     # Arrange
     mock_instance = mock_async_client.return_value
-    mock_api_response = {
-        'models': [
-            {'name': 'llama3', 'size': 12345, 'modified_at': '2023-01-01'},
-            {'name': 'qwen', 'size': 67890, 'modified_at': '2023-01-02'},
-        ]
+
+    # Create mock model objects that mimic the ollama library response
+    mock_model1 = MagicMock()
+    mock_model1.model_dump.return_value = {
+        'model': 'llama3',
+        'size': 12345,
+        'digest': 'abc123',
+        'modified_at': '2023-01-01T00:00:00Z'
     }
-    mock_instance.list = AsyncMock(return_value=mock_api_response)
+
+    mock_model2 = MagicMock()
+    mock_model2.model_dump.return_value = {
+        'model': 'qwen',
+        'size': 67890,
+        'digest': 'def456',
+        'modified_at': '2023-01-02T00:00:00Z'
+    }
+
+    mock_list_response = MagicMock()
+    mock_list_response.models = [mock_model1, mock_model2]
+    mock_instance.list = AsyncMock(return_value=mock_list_response)
 
     # Act
     result = await client.list_models()
@@ -63,9 +89,10 @@ async def test_list_models_success(mock_async_client, client):
     # Assert
     assert result["success"] is True
     assert result["count"] == 2
-    assert isinstance(result["models"][0], ModelInfo)
-    assert result["models"][0].name == 'llama3'
-    assert result["models"][0].size_human == '12.1 KB'
+    # Client now returns dicts, not ModelInfo objects
+    assert isinstance(result["models"][0], dict)
+    assert result["models"][0]["name"] == 'llama3'
+    assert result["models"][0]["size_human"] == '12.1 KB'
 
 @pytest.mark.asyncio
 @patch('ollama.AsyncClient')
@@ -123,9 +150,9 @@ async def test_remove_model_not_found(mock_async_client, client):
 
 def test_model_info_size_human_readable():
     """Test the human-readable size conversion in ModelInfo."""
-    # Test cases for various sizes
-    assert ModelInfo("test", 100, "").size_human == "100.0 B"
-    assert ModelInfo("test", 2 * 1024, "").size_human == "2.0 KB"
-    assert ModelInfo("test", 3 * 1024**2, "").size_human == "3.0 MB"
-    assert ModelInfo("test", 4 * 1024**3, "").size_human == "4.0 GB"
-    assert ModelInfo("test", 5 * 1024**4, "").size_human == "5.0 TB"
+    # Test cases for various sizes - ModelInfo requires 4 args: name, size, digest, modified_at
+    assert ModelInfo("test", 100, "", "2024-01-01").size_human == "100.0 B"
+    assert ModelInfo("test", 2 * 1024, "", "2024-01-01").size_human == "2.0 KB"
+    assert ModelInfo("test", 3 * 1024**2, "", "2024-01-01").size_human == "3.0 MB"
+    assert ModelInfo("test", 4 * 1024**3, "", "2024-01-01").size_human == "4.0 GB"
+    assert ModelInfo("test", 5 * 1024**4, "", "2024-01-01").size_human == "5.0 TB"

@@ -39,15 +39,12 @@ async def test_suggest_models_local_advisor_multilingual(language, user_needs):
     # Arrange
     mock_client = MagicMock(spec=OllamaClient)
 
-    class FakeModelInfo:
-        def __init__(self, name):
-            self.name = name
-
+    # Use dicts instead of objects - this matches how client.list_models() returns data
     fake_local_models = [
-        FakeModelInfo(name="codellama:7b"),
-        FakeModelInfo(name="llama3:latest"),
+        {"name": "codellama:7b", "size": 1000, "size_human": "1.0 KB", "modified_at": "2024-01-01", "modified_display": "2024-01-01"},
+        {"name": "llama3:latest", "size": 2000, "size_human": "2.0 KB", "modified_at": "2024-01-01", "modified_display": "2024-01-01"},
     ]
-    mock_client.list_models = AsyncMock(return_value={"success": True, "models": fake_local_models})
+    mock_client.list_models = AsyncMock(return_value={"success": True, "models": fake_local_models, "count": 2})
 
     def show_side_effect(model_name):
         if model_name == "codellama:7b":

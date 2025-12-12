@@ -1,5 +1,5 @@
 """
-Model Manager - Ollama MCP Server v1.0.0
+Model Manager - Ollama MCP Server v0.9.0
 Comprehensive model management for Ollama
 
 Design Principles:
@@ -63,7 +63,7 @@ class ModelManager:
                     "name": model["name"],
                     "size_bytes": model["size"],
                     "size_human": model["size_human"],
-                    "modified": model["modified"],
+                    "modified": model.get("modified_display", model.get("modified_at", "Unknown")),
                     "is_default": model["name"] == self.default_model
                 }
                 for model in models_result["models"]
@@ -77,16 +77,10 @@ class ModelManager:
             }
             
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "models": []
-            }
-        except Exception as e:
             logger.error(f"Error listing models: {e}")
             return {
                 "success": False,
-                "error": f"Unexpected error: {str(e)}",
+                "error": str(e),
                 "models": []
             }
     
@@ -180,12 +174,6 @@ class ModelManager:
                     "model_name": model_name
                 }
                 
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "model_name": model_name
-            }
         except Exception as e:
             logger.error(f"Error removing model {model_name}: {e}")
             return {
@@ -300,5 +288,4 @@ class ModelManager:
 # Export main classes
 __all__ = [
     "ModelManager",
-    "ModelRecommendation"
 ]

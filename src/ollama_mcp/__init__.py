@@ -4,12 +4,12 @@ Ollama MCP Server - Comprehensive Ollama Management via MCP
 A specialized Model Context Protocol server for complete Ollama integration,
 including model management, server control, and intelligent recommendations.
 
-Version: 1.0.0
+Version: 0.9.0
 Author: Paolo Dalprato
 License: MIT
 """
 
-__version__ = "1.0.0"
+__version__ = "0.9.0"
 __author__ = "Paolo Dalprato"
 __email__ = "paolo@paolodalprato.com"
 __license__ = "MIT"

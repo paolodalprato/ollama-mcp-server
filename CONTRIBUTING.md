@@ -14,7 +14,7 @@ Our mission is to provide a **self-contained, enterprise-grade MCP server** for 
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.10 or higher (required by MCP SDK dependency)
 - Git
 - Ollama installed and accessible
 - MCP-compatible client for testing (e.g., Claude Desktop)
@@ -249,7 +249,7 @@ What you expected to happen.
 
 **System Information**
 - OS: [e.g., Windows 11, Ubuntu 22.04]
-- Python: [e.g., 3.9.7]
+- Python: [e.g., 3.10.0]
 - Ollama: [e.g., 0.3.0]
 - MCP Client: [e.g., Claude Desktop]
 
