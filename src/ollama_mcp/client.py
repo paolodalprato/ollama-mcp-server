@@ -87,7 +87,7 @@ class OllamaClient:
     - Graceful error handling.
     """
     
-    def __init__(self, host: str = "http://localhost:11434", timeout: int = 30):
+    def __init__(self, host: str = "http://localhost:11434", timeout: int = 60):
         """Initialize client without connecting"""
         self.host = host
         self.timeout = timeout
