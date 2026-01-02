@@ -1,7 +1,6 @@
 """
-Ollama Server Control Module
-Manages starting, stopping, and monitoring the local Ollama server for MCP v0.9.
-Based on the working Bridge v1.0 implementation.
+Ollama Server Control - Ollama MCP Server v0.9
+Manages starting, stopping, and monitoring the local Ollama server.
 """
 
 import asyncio

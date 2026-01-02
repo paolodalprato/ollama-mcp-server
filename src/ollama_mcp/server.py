@@ -1,6 +1,6 @@
 """
 Ollama MCP Server v0.9 - Complete & Advanced
-Extended from v1.1 with comprehensive model management capabilities
+Comprehensive model management capabilities for local Ollama instances.
 
 Key Features:
 - All base tools: list, chat, health_check, system_check
@@ -29,9 +29,6 @@ from ollama_mcp.tools.base_tools import get_base_tools, handle_base_tool
 from ollama_mcp.tools.advanced_tools import get_advanced_tools, handle_advanced_tool
 
 logger = logging.getLogger(__name__)
-
-
-# REMOVED: Global JSON encoder monkey patch - this was causing the datetime serialization bug!
 
 
 class OllamaMCPServer:

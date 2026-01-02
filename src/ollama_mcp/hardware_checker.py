@@ -1,5 +1,5 @@
 """
-Hardware Checker - Claude Ollama Bridge v0.9
+Hardware Checker - Ollama MCP Server v0.9
 Cross-platform hardware compatibility and resource checking with multi-GPU support
 
 Design Principles:
@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum
 
-import json
 from .config import HardwareConfig, get_config
 
 logger = logging.getLogger(__name__)
@@ -138,11 +137,19 @@ class SystemInfo:
 
 
 
+# === GPU DETECTION ===
+# Supports multiple vendors via platform-specific tools:
+# - NVIDIA: nvidia-smi (CUDA)
+# - AMD: rocm-smi (ROCm)
+# - Intel: intel-gpu-top or lspci
+# - Apple: sysctl (Metal, unified memory)
+
 class CrossPlatformGPUDetector:
     """
-    Cross-platform GPU detection with multi-vendor support
-    
+    Cross-platform GPU detection with multi-vendor support.
+
     Detects GPUs from NVIDIA, AMD, Intel, and Apple across different platforms.
+    Falls back to CPU-only mode if no GPU is detected.
     """
     
     def __init__(self, config: Optional[HardwareConfig] = None):
@@ -431,12 +438,17 @@ class CrossPlatformGPUDetector:
         )
 
 
+# === SYSTEM HARDWARE CHECKER ===
+# Main entry point for system_resource_check tool.
+# Combines CPU, RAM, and GPU information into a single report.
+
 class HardwareChecker:
     """
-    Cross-platform system hardware compatibility checker
-    
+    Cross-platform system hardware compatibility checker.
+
     Analyzes system resources and provides compatibility assessments
     for different Ollama models across multiple platforms and GPU vendors.
+    Used by the system_resource_check MCP tool.
     """
     
     def __init__(self, config: Optional[HardwareConfig] = None):

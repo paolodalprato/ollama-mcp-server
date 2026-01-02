@@ -13,24 +13,14 @@ Tools:
 """
 
 import json
-import subprocess
-import asyncio
-import time
-from datetime import datetime
 from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
 
-from ollama_mcp.client import OllamaClient
+from ollama_mcp.client import OllamaClient, DateTimeEncoder
 from ollama_mcp.model_manager import ModelManager
 
 
-class DateTimeEncoder(json.JSONEncoder):
-    """JSON encoder that handles datetime objects by converting them to ISO format strings"""
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
-
+# === TOOL DEFINITIONS ===
 
 def get_advanced_tools() -> List[Tool]:
     """Return list of advanced tools for MCP registration"""
@@ -113,8 +103,10 @@ def get_advanced_tools() -> List[Tool]:
     ]
 
 
+# === TOOL HANDLERS ===
+
 async def handle_advanced_tool(name: str, arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
-    """Handle advanced tool calls"""
+    """Route advanced tool calls to appropriate handler functions."""
     
     if name == "suggest_models":
         return await _handle_suggest_models(arguments, client)
@@ -268,13 +260,15 @@ async def _handle_test_model_responsiveness(arguments: Dict[str, Any], client: O
         return [TextContent(type="text", text=json.dumps({"success": False, "error": "model_name is a required argument."}, cls=DateTimeEncoder, indent=2))]
 
     model_manager = ModelManager(client)
-    # The responsiveness test is a private method, but we can call it here for the tool.
-    # A cleaner refactor could make it a public method if desired.
-    result = await model_manager._test_model_responsiveness(model_name)
+    result = await model_manager.test_model_responsiveness(model_name)
     
     return [TextContent(type="text", text=json.dumps(result, cls=DateTimeEncoder, indent=2))]
 
 
+# === MODEL RECOMMENDATION ENGINE ===
+# Maps task concepts to keywords (English + Italian) and model name patterns.
+# Used by suggest_models to match user needs against locally installed models.
+# Add new concepts here to expand recommendation capabilities.
 CONCEPT_KEYWORDS = {
     "coding": {"code", "coding", "develop", "development", "sviluppo", "programmazione", "script", "coder", "codellama", "devstral"},
     "writing": {"write", "writing", "scrivere", "creative", "storia", "racconto", "article", "articolo", "creativewriting"},
@@ -285,7 +279,18 @@ CONCEPT_KEYWORDS = {
 }
 
 def _analyze_local_models(user_needs: str, model_details: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Analyze local models based on user needs and return ranked recommendations using concept matching."""
+    """
+    Analyze local models and return ranked recommendations.
+
+    Scoring algorithm:
+    1. Extract keywords from user's request
+    2. Match against CONCEPT_KEYWORDS to identify requested concepts
+    3. For each model, search name + modelfile + details for concept keywords
+    4. Score +10 points per matched concept
+    5. Return models sorted by score (highest first)
+
+    Falls back to "chat" concept if no specific concept is detected.
+    """
     user_keywords = set(user_needs.lower().split())
     
     # Identify concepts from user's request

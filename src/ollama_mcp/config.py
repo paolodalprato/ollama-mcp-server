@@ -20,7 +20,7 @@ class OllamaConfig:
     """Main configuration for the Ollama MCP server."""
     host: str = "localhost"
     port: int = 11434
-    timeout: int = 30
+    timeout: int = 60
     hardware: HardwareConfig = field(default_factory=HardwareConfig)
     
     @property
@@ -51,6 +51,6 @@ def get_config() -> OllamaConfig:
     return OllamaConfig(
         host=os.getenv("OLLAMA_HOST", "localhost"),
         port=int(os.getenv("OLLAMA_PORT", "11434")),
-        timeout=int(os.getenv("OLLAMA_TIMEOUT", "30")),
+        timeout=int(os.getenv("OLLAMA_TIMEOUT", "60")),
         hardware=hardware_config
     )

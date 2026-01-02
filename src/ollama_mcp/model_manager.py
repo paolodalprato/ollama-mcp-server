@@ -230,7 +230,7 @@ class ModelManager:
                 "model_name": model_name
             }
     
-    async def _test_model_responsiveness(self, model_name: str) -> Dict[str, Any]:
+    async def test_model_responsiveness(self, model_name: str) -> Dict[str, Any]:
         """
         Test if a model responds quickly to simple queries
         

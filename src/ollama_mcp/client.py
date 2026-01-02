@@ -4,11 +4,26 @@ Fully asynchronous, resilient client for Ollama communication.
 """
 
 import asyncio
+import json
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 import ollama
+
+
+# === DATETIME SERIALIZATION UTILITIES ===
+# MCP tools return JSON responses. Python datetime objects are not JSON-serializable
+# by default, so we provide two utilities:
+# 1. DateTimeEncoder - for json.dumps() in tool responses
+# 2. _format_datetime_safe() - for recursive sanitization of nested structures
+
+class DateTimeEncoder(json.JSONEncoder):
+    """JSON encoder that handles datetime objects by converting them to ISO format strings."""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 logger = logging.getLogger(__name__)
 

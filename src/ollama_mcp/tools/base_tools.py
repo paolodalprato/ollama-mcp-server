@@ -18,20 +18,15 @@ v0.9.3 improvements:
 
 import json
 import psutil
-from datetime import datetime
 from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
 
-from ollama_mcp.client import OllamaClient
+from ollama_mcp.client import OllamaClient, DateTimeEncoder
 
 
-class DateTimeEncoder(json.JSONEncoder):
-    """JSON encoder that handles datetime objects by converting them to ISO format strings"""
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
-
+# === TOOL DEFINITIONS ===
+# Each tool is defined with name, description, and JSON Schema for input validation.
+# The MCP client uses these definitions to present available tools to the user.
 
 def get_base_tools() -> List[Tool]:
     """Return list of base tools for MCP registration"""
@@ -88,8 +83,12 @@ def get_base_tools() -> List[Tool]:
     ]
 
 
+# === TOOL HANDLERS ===
+# Each handler processes arguments, calls the client, and formats the response.
+# All handlers return List[TextContent] for MCP protocol compliance.
+
 async def handle_base_tool(name: str, arguments: Dict[str, Any], client: OllamaClient) -> List[TextContent]:
-    """Handle base tool calls with resilient error handling"""
+    """Route tool calls to appropriate handler functions."""
     
     if name == "list_local_models":
         return await _handle_list_models(client)
